@@ -1,0 +1,1687 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+
+// ─── SUPABASE CLIENT ─────────────────────────────────────────────────
+const SUPABASE_URL = "https://izbclyrionmfcjdidnuo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_WiPfn8gk6OfdVL_2SxbhDg_tEEQpo06";
+
+// Client Supabase léger (sans npm, fetch natif)
+const supabase = {
+  _url: SUPABASE_URL,
+  _key: SUPABASE_KEY,
+  _headers: {
+    "apikey": SUPABASE_KEY,
+    "Authorization": `Bearer ${SUPABASE_KEY}`,
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+  },
+
+  // Auth
+  auth: {
+    async signUp({ email, password, options }) {
+      try {
+        const r = await fetch(SUPABASE_URL + "/auth/v1/signup", {
+          method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+          body: JSON.stringify({ email, password, data: options?.data || {} })
+        });
+        const data = await r.json();
+        console.log("signUp response:", JSON.stringify(data));
+        return data;
+      } catch(e) {
+        console.error("signUp error:", e);
+        return { error: { message: e.message } };
+      }
+    },
+    async signIn({ email, password }) {
+      try {
+        const r = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+          method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+          body: JSON.stringify({ email, password })
+        });
+        const data = await r.json();
+        console.log("signIn response:", JSON.stringify(data));
+        if (data.access_token) {
+          localStorage.setItem("aura_token", data.access_token);
+          localStorage.setItem("aura_user_id", data.user?.id);
+        }
+        return data;
+      } catch(e) {
+        console.error("signIn error:", e);
+        return { error: { message: e.message } };
+      }
+    },
+    async signOut() {
+      const token = localStorage.getItem("aura_token");
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method:"POST", headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${token}`}
+      });
+      localStorage.removeItem("aura_token");
+      localStorage.removeItem("aura_user_id");
+    },
+    getToken() { return localStorage.getItem("aura_token"); },
+    getUserId() { return localStorage.getItem("aura_user_id"); },
+    isLoggedIn() { return !!localStorage.getItem("aura_token"); },
+  },
+
+  // Database helpers
+  async select(table, query = "") {
+    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+      headers: { ...this._headers, "Authorization": `Bearer ${token}` }
+    });
+    return r.json();
+  },
+  async insert(table, data) {
+    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method:"POST",
+      headers: { ...this._headers, "Authorization": `Bearer ${token}` },
+      body: JSON.stringify(data)
+    });
+    return r.json();
+  },
+  async update(table, data, query) {
+    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+      method:"PATCH",
+      headers: { ...this._headers, "Authorization": `Bearer ${token}` },
+      body: JSON.stringify(data)
+    });
+    return r.json();
+  },
+
+  // Realtime (polling simplifié)
+  subscribe(table, callback, intervalMs = 3000) {
+    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+    let lastId = null;
+    const id = setInterval(async () => {
+      const query = lastId ? `?id=gt.${lastId}&order=id` : `?order=created_at.desc&limit=1`;
+      const data = await this.select(table, query);
+      if (Array.isArray(data) && data.length > 0) {
+        if (lastId) callback(data);
+        lastId = data[0]?.id || lastId;
+      }
+    }, intervalMs);
+    return () => clearInterval(id);
+  },
+};
+
+// ─── SCÈNES CANVAS PHOTO-RÉALISTES ──────────────────────────────────
+// Chaque scène est dessinée sur un Canvas avec grain photographique,
+// couches de lumière et textures — rendu natif navigateur, zéro dépendance.
+
+
+function rr(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+// ─── FONDS — dégradés CSS atmosphériques (floutés = photo réelle) ───
+const BG_SCENES = [
+  // 1. Chambre — lumière ambre chaude de lampes de chevet
+  `radial-gradient(ellipse 80% 60% at 8% 50%, #ffcf6e 0%, #e8801a 18%, #a03808 40%, #3a1204 65%, #180800 100%),
+   radial-gradient(ellipse 80% 60% at 92% 50%, #ffcf6e 0%, #e8801a 18%, #a03808 40%, #3a1204 65%, #180800 100%),
+   radial-gradient(ellipse 55% 35% at 50% 62%, #f5eacc 0%, #d4b87a 25%, #6a3010 55%, transparent 80%),
+   radial-gradient(ellipse 40% 28% at 50% 14%, #c8d8ff 0%, #6080c0 30%, transparent 70%),
+   linear-gradient(180deg, #120800 0%, #2a1208 35%, #1e0e06 65%, #3d2010 85%, #1a0a04 100%)`,
+
+  // 2. Salon cheminée — feu orange vif, velours profond
+  `radial-gradient(ellipse 55% 70% at 50% 68%, #fff5a0 0%, #ffcc30 8%, #ff8c0a 20%, #e04a05 38%, #801802 58%, #300800 80%, transparent 100%),
+   radial-gradient(ellipse 90% 55% at 50% 72%, #ff7008 0%, #cc3a04 25%, #701002 50%, transparent 75%),
+   radial-gradient(ellipse 35% 22% at 88% 30%, #ffd878 0%, #e09020 30%, transparent 70%),
+   linear-gradient(180deg, #080300 0%, #160902 30%, #0e0601 55%, #3a1e08 75%, #1a0c04 100%)`,
+
+  // 3. Bar whisky — spots dorés, bois mahogany sombre
+  `radial-gradient(ellipse 50% 65% at 18% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
+   radial-gradient(ellipse 50% 65% at 50% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
+   radial-gradient(ellipse 50% 65% at 82% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
+   radial-gradient(ellipse 70% 40% at 50% 72%, #8a5020 0%, #5a3010 30%, #2a1406 60%, transparent 85%),
+   linear-gradient(180deg, #050301 0%, #100702 22%, #180e04 45%, #4a2e0e 68%, #2e1a08 85%, #120904 100%)`,
+
+  // 4. Restaurant — bougies, nappes blanches, lustre doré
+  `radial-gradient(ellipse 60% 40% at 50% 0%, #ffeaa0 0%, #ffcc50 12%, #e09018 28%, #805010 48%, transparent 70%),
+   radial-gradient(ellipse 55% 55% at 50% 65%, #fff8e8 0%, #ffecc0 12%, #e8c060 28%, #c08020 45%, #703808 62%, transparent 80%),
+   radial-gradient(ellipse 25% 20% at 20% 55%, #fff0c0 0%, #f0d070 20%, #c09030 45%, transparent 70%),
+   radial-gradient(ellipse 25% 20% at 80% 53%, #fff0c0 0%, #f0d070 20%, #c09030 45%, transparent 70%),
+   linear-gradient(180deg, #060402 0%, #120a04 28%, #1c1006 50%, #0e0804 75%, #080502 100%)`,
+
+  // 5. Plage nuit — lune sur mer turquoise, sable chaud
+  `radial-gradient(ellipse 45% 35% at 72% 16%, #fffce8 0%, #f0e8b0 10%, #c8d8ff 25%, #6090d0 45%, transparent 70%),
+   radial-gradient(ellipse 65% 30% at 65% 44%, #e8f8ff 0%, #a8d8f0 15%, #4898c8 35%, transparent 60%),
+   linear-gradient(180deg, #02040e 0%, #06101e 15%, #0a1e40 30%, #0e3060 45%, #1a78a0 57%, #1e8aaa 63%, #d8bc78 65%, #c8a85e 72%, #a88040 85%, #7a5a28 100%)`,
+
+  // 6. Coucher de soleil — ciel dramatique, silhouettes sombres
+  `radial-gradient(ellipse 55% 55% at 50% 55%, #fffcd0 0%, #ffe860 6%, #ffb820 14%, #f06010 25%, #c02818 38%, transparent 65%),
+   radial-gradient(ellipse 90% 70% at 50% 52%, #ff8010 0%, #e04808 18%, #901808 38%, #4a0808 58%, transparent 80%),
+   radial-gradient(ellipse 40% 30% at 18% 22%, #5a0a4a 0%, #380630 40%, transparent 75%),
+   radial-gradient(ellipse 40% 30% at 82% 20%, #5a0a4a 0%, #380630 40%, transparent 75%),
+   linear-gradient(180deg, #040110 0%, #0e0420 12%, #28062a 24%, #5a0e20 36%, #c02810 48%, #e86010 58%, #f5a020 67%, #fdd040 74%, #050202 76%, #020101 100%)`,
+];
+
+// ─── Composant fond CSS (ultra simple, toujours visible) ──────────────
+function SceneBg({ sceneIndex, opacity=1, transition="" }) {
+  return (
+    <div style={{
+      position:"absolute", inset:-12,
+      background: BG_SCENES[sceneIndex % BG_SCENES.length],
+      backgroundSize:"cover",
+      filter:"blur(8px) saturate(1.3) brightness(0.9)",
+      opacity, transition,
+    }}/>
+  );
+}
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+
+:root{
+  --rose:       #E8647A;
+  --rose-deep:  #C0415A;
+  --amber:      #E8A050;
+  --amber-soft: #F5C883;
+  --teal:       #4ECDC4;
+  --navy:       #1A2744;
+  --navy-mid:   #243356;
+  --glass:      rgba(255,255,255,0.12);
+  --glass-dark: rgba(10,18,40,0.55);
+  --glass-med:  rgba(10,18,40,0.72);
+  --white:      #FFFFFF;
+  --offwhite:   #F7F2EE;
+  --muted:      rgba(255,255,255,0.55);
+  --dim:        rgba(255,255,255,0.28);
+  --border:     rgba(255,255,255,0.14);
+  --shadow:     0 8px 40px rgba(0,0,0,0.38);
+  --shadow-sm:  0 4px 20px rgba(0,0,0,0.22);
+}
+
+body{
+  background:#0a0f1e;
+  display:flex;justify-content:center;align-items:center;
+  min-height:100vh;
+  font-family:'Nunito',sans-serif;
+  color:var(--white);
+}
+
+/* ── PHONE SHELL ── */
+.shell{
+  width:393px;height:852px;
+  border-radius:52px;overflow:hidden;
+  position:relative;
+  background:#111828;
+  box-shadow:
+    0 0 0 1.5px rgba(255,255,255,0.12),
+    0 50px 140px rgba(0,0,0,0.85),
+    0 0 100px rgba(232,100,122,0.08);
+}
+
+/* ── BG PAYSAGE FLOUTÉ ── */
+.bg-wrap{
+  position:absolute;inset:0;
+  z-index:0;overflow:hidden;
+}
+.bg-landscape{
+  position:absolute;inset:-10px;
+  width:calc(100% + 20px);height:calc(100% + 20px);
+  filter:blur(9px) brightness(0.6) saturate(1.25);
+  object-fit:cover;
+}
+.bg-landscape-next{
+  position:absolute;inset:-10px;
+  width:calc(100% + 20px);height:calc(100% + 20px);
+  filter:blur(9px) brightness(0.6) saturate(1.25);
+  opacity:0;
+  transition:opacity 1.8s ease;
+  object-fit:cover;
+}
+.bg-landscape-next.visible{ opacity:1; }
+.bg-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(10,16,40,0.10) 0%,rgba(5,8,20,0.05) 50%,rgba(10,16,40,0.12) 100%);}
+
+/* ── SCREEN ── */
+.screen{
+  position:absolute;inset:0;z-index:2;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  background:transparent;
+}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  padding:16px 28px 0;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-shrink:0;
+}
+.s-time{font-size:15px;font-weight:700;letter-spacing:-.3px;}
+.s-icons{display:flex;gap:5px;align-items:center;font-size:13px;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:absolute;bottom:0;left:0;right:0;
+  height:90px;
+  background:var(--glass-med);
+  backdrop-filter:blur(28px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:flex-start;padding-top:10px;
+  z-index:50;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;padding:8px;position:relative;
+  transition:transform .15s;
+}
+.nav-item:active{transform:scale(.88);}
+.nav-icon{font-size:23px;transition:transform .2s;}
+.nav-label{font-size:10px;font-weight:600;color:var(--dim);
+  transition:color .2s;letter-spacing:.6px;text-transform:uppercase;}
+.nav-item.active .nav-label{color:var(--rose);}
+.nav-item.active .nav-icon{transform:scale(1.12);}
+.nav-badge{
+  position:absolute;top:3px;right:14px;
+  background:var(--rose);color:white;
+  font-size:9px;font-weight:800;
+  width:17px;height:17px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid transparent;
+}
+
+/* ── LOGO ── */
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:32px;font-weight:700;
+  background:linear-gradient(135deg,#F5C883,#E8647A);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:-.5px;
+}
+
+/* ─────────────────────────────────────────
+   SPLASH
+───────────────────────────────────────── */
+.splash{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:0 32px;text-align:center;
+  gap:0;
+}
+.splash-status{
+  position:absolute;top:0;left:0;right:0;
+  padding:16px 28px 0;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.splash-logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:96px;font-weight:700;line-height:1;
+  background:linear-gradient(135deg,#F5C883 0%,#E8647A 55%,#C084FC 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:4px;
+  animation:fadeUpEl .9s cubic-bezier(.22,1,.36,1) both;
+}
+.splash-tag{
+  font-size:12px;letter-spacing:5px;text-transform:uppercase;
+  color:var(--muted);font-weight:400;margin-bottom:36px;
+  animation:fadeUpEl .9s .08s cubic-bezier(.22,1,.36,1) both;
+}
+.splash-pills{
+  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+  margin-bottom:36px;
+  animation:fadeUpEl .9s .16s cubic-bezier(.22,1,.36,1) both;
+}
+.splash-pill{
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.16);
+  backdrop-filter:blur(14px);
+  border-radius:40px;padding:8px 15px;
+  font-size:12px;font-weight:700;color:rgba(255,255,255,0.88);
+  display:flex;align-items:center;gap:5px;
+}
+.splash-divider{
+  width:48px;height:1px;background:rgba(255,255,255,0.15);
+  margin:0 auto 28px;
+}
+.btn-primary{
+  width:100%;padding:17px;border:none;border-radius:20px;
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  color:white;font-family:'Nunito',sans-serif;
+  font-size:16px;font-weight:700;cursor:pointer;
+  box-shadow:0 10px 36px rgba(232,100,122,.42);
+  transition:all .2s;margin-bottom:12px;letter-spacing:.3px;
+  animation:fadeUpEl .9s .24s cubic-bezier(.22,1,.36,1) both;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 44px rgba(232,100,122,.55);}
+.btn-primary:active{transform:scale(.97);}
+.btn-ghost{
+  width:100%;padding:15px;border-radius:20px;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);
+  backdrop-filter:blur(14px);
+  color:rgba(255,255,255,0.88);font-family:'Nunito',sans-serif;
+  font-size:15px;font-weight:600;cursor:pointer;
+  transition:all .2s;
+  animation:fadeUpEl .9s .32s cubic-bezier(.22,1,.36,1) both;
+}
+.btn-ghost:hover{background:rgba(255,255,255,.18);}
+.splash-footnote{
+  margin-top:18px;font-size:11px;color:var(--dim);font-weight:500;
+  animation:fadeUpEl .9s .4s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ─────────────────────────────────────────
+   DISCOVER
+───────────────────────────────────────── */
+.discover{
+  flex:1;padding-bottom:90px;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.disc-header{
+  padding:8px 22px 10px;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-shrink:0;
+}
+.icon-btn{
+  width:44px;height:44px;
+  background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(14px);border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:18px;transition:all .2s;
+}
+.icon-btn:hover{background:rgba(255,255,255,.2);}
+
+/* Card stack */
+.card-stack{
+  flex:1;position:relative;
+  padding:0 18px;
+  display:flex;align-items:center;justify-content:center;
+}
+.pcard{
+  position:absolute;width:100%;height:455px;
+  border-radius:32px;overflow:hidden;
+  cursor:grab;user-select:none;
+  transform-origin:bottom center;
+  box-shadow:0 24px 64px rgba(0,0,0,.55);
+  transition:transform .08s;
+}
+.pcard:active{cursor:grabbing;}
+.pcard-img{width:100%;height:100%;object-fit:cover;display:block;}
+.pcard-grad{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(10,18,40,.02) 30%,rgba(10,18,40,.97) 100%);}
+.pcard-top{
+  position:absolute;top:14px;left:14px;right:14px;
+  display:flex;justify-content:space-between;align-items:flex-start;
+}
+.match-badge{
+  background:rgba(10,18,40,.7);backdrop-filter:blur(12px);
+  border:1px solid rgba(232,100,122,.35);border-radius:30px;
+  padding:6px 14px;font-size:13px;font-weight:700;color:#F5C883;
+  display:flex;align-items:center;gap:5px;
+}
+.pcard-badges{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.badge-verified{
+  background:rgba(10,18,40,.7);backdrop-filter:blur(12px);
+  border-radius:30px;padding:5px 10px;font-size:12px;
+}
+.badge-premium{
+  background:linear-gradient(135deg,#E8A050,#E8647A);
+  border-radius:30px;padding:4px 10px;font-size:10px;
+  font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+}
+
+/* Media badges on card */
+.media-badges{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  display:flex;gap:8px;align-items:center;
+}
+.media-badge{
+  background:rgba(10,18,40,.75);backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:30px;
+  padding:5px 12px;font-size:11px;font-weight:700;
+  display:flex;align-items:center;gap:5px;cursor:pointer;
+  transition:all .2s;
+}
+.media-badge:hover{background:rgba(232,100,122,.35);border-color:rgba(232,100,122,.5);}
+.media-badge.voice{color:#4ECDC4;}
+.media-badge.video{color:#F5C883;}
+
+.pcard-body{position:absolute;bottom:0;left:0;right:0;padding:18px 20px 20px;}
+.pcard-name-row{display:flex;align-items:baseline;gap:9px;margin-bottom:3px;}
+.pcard-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;}
+.pcard-age{font-size:20px;color:rgba(255,255,255,.65);font-weight:300;}
+.pcard-job{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:10px;
+  display:flex;align-items:center;gap:5px;}
+.pcard-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;}
+.ptag{
+  background:rgba(255,255,255,.12);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:30px;padding:4px 12px;font-size:11px;font-weight:600;
+}
+.pcard-dist{font-size:12px;color:rgba(255,255,255,.38);
+  display:flex;align-items:center;gap:4px;}
+
+/* Swipe overlays */
+.swipe-ov{
+  position:absolute;inset:0;border-radius:32px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .08s;
+}
+.swipe-ov.like{background:linear-gradient(135deg,rgba(78,205,196,.28),transparent);}
+.swipe-ov.nope{background:linear-gradient(225deg,rgba(232,100,122,.28),transparent);}
+.swipe-lbl{
+  font-family:'Cormorant Garamond',serif;
+  font-size:44px;font-weight:700;
+  border:3px solid;border-radius:14px;
+  padding:6px 20px;
+}
+.swipe-lbl.like{color:#4ECDC4;border-color:#4ECDC4;transform:rotate(18deg);}
+.swipe-lbl.nope{color:#E8647A;border-color:#E8647A;transform:rotate(-18deg);}
+
+/* Action buttons */
+.actions{
+  display:flex;justify-content:center;align-items:center;gap:16px;
+  padding:10px 24px 14px;flex-shrink:0;
+}
+.act-btn{
+  border:none;cursor:pointer;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .18s;
+  backdrop-filter:blur(14px);
+}
+.act-btn:active{transform:scale(.86);}
+.act-pass{width:58px;height:58px;font-size:24px;
+  background:var(--glass);border:1px solid var(--border);}
+.act-undo{width:50px;height:50px;font-size:20px;
+  background:var(--glass);border:1px solid var(--border);}
+.act-like{width:70px;height:70px;font-size:28px;
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  box-shadow:0 10px 36px rgba(232,100,122,.45);}
+.act-star{width:50px;height:50px;font-size:20px;
+  background:linear-gradient(135deg,#6C63FF,#C084FC);
+  box-shadow:0 6px 24px rgba(108,99,255,.35);}
+.act-boost{width:50px;height:50px;font-size:20px;
+  background:linear-gradient(135deg,#E8A050,#F5C883);
+  box-shadow:0 6px 24px rgba(232,160,80,.35);}
+
+/* Back cards */
+.bcard1{transform:scale(.94) translateY(13px);opacity:.55;z-index:0;}
+.bcard2{transform:scale(.88) translateY(26px);opacity:.25;z-index:-1;}
+.fcard{z-index:1;}
+
+/* ─────────────────────────────────────────
+   MEDIA PLAYER (voice/video)
+───────────────────────────────────────── */
+.media-overlay{
+  position:absolute;inset:0;z-index:100;
+  background:rgba(10,15,30,.88);backdrop-filter:blur(28px);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:32px;animation:fadeIn .25s ease;
+}
+.media-avatar{
+  width:90px;height:90px;border-radius:50%;object-fit:cover;
+  border:3px solid rgba(232,160,80,.6);
+  margin-bottom:14px;
+}
+.media-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;
+  margin-bottom:4px;}
+.media-sub{font-size:13px;color:var(--muted);margin-bottom:32px;}
+
+/* Voice player */
+.voice-player{
+  width:100%;background:var(--glass);
+  border:1px solid var(--border);border-radius:24px;
+  padding:22px 24px;margin-bottom:20px;
+}
+.voice-bars{
+  display:flex;align-items:center;justify-content:center;
+  gap:4px;height:48px;margin-bottom:18px;
+}
+.vbar{
+  width:4px;border-radius:4px;
+  background:linear-gradient(180deg,#E8A050,#E8647A);
+  animation:barPulse 1.2s ease-in-out infinite;
+}
+@keyframes barPulse{
+  0%,100%{transform:scaleY(.3);opacity:.5;}
+  50%{transform:scaleY(1);opacity:1;}
+}
+.voice-controls{display:flex;align-items:center;gap:16px;}
+.play-btn{
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  border:none;color:white;font-size:20px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 24px rgba(232,100,122,.4);
+  flex-shrink:0;transition:transform .15s;
+}
+.play-btn:active{transform:scale(.9);}
+.voice-progress{flex:1;height:4px;background:rgba(255,255,255,.15);
+  border-radius:2px;position:relative;cursor:pointer;}
+.voice-fill{height:100%;background:linear-gradient(90deg,#E8A050,#E8647A);
+  border-radius:2px;transition:width .1s linear;}
+.voice-time{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;}
+
+/* Video player */
+.video-player{
+  width:100%;aspect-ratio:9/16;max-height:260px;
+  border-radius:24px;overflow:hidden;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--border);margin-bottom:20px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.video-placeholder{
+  width:100%;height:100%;
+  background:linear-gradient(160deg,#1A2744,#243356);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;
+}
+.video-icon{font-size:48px;opacity:.7;}
+.video-label{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.5px;}
+.video-duration{
+  position:absolute;bottom:12px;right:12px;
+  background:rgba(10,15,30,.75);border-radius:20px;
+  padding:4px 10px;font-size:12px;font-weight:700;
+}
+.media-close{
+  padding:14px 40px;background:var(--glass);
+  border:1px solid var(--border);border-radius:20px;
+  color:var(--offwhite);font-family:'Nunito',sans-serif;
+  font-size:15px;font-weight:600;cursor:pointer;
+  backdrop-filter:blur(12px);transition:all .2s;
+}
+.media-close:hover{background:rgba(255,255,255,.2);}
+
+/* ─────────────────────────────────────────
+   MESSAGES
+───────────────────────────────────────── */
+.messages{flex:1;padding-bottom:90px;overflow-y:auto;display:flex;flex-direction:column;}
+.messages::-webkit-scrollbar{display:none;}
+.sec-header{padding:8px 22px 0;display:flex;justify-content:space-between;align-items:center;}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;}
+
+.stories{display:flex;gap:14px;padding:16px 22px;overflow-x:auto;flex-shrink:0;}
+.stories::-webkit-scrollbar{display:none;}
+.story{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
+.story-ring{
+  width:62px;height:62px;border-radius:50%;padding:2.5px;
+  background:linear-gradient(135deg,#E8A050,#E8647A,#C084FC);cursor:pointer;
+}
+.story-inner{
+  width:100%;height:100%;border-radius:50%;overflow:hidden;
+  border:2.5px solid rgba(10,15,30,.9);
+}
+.story-inner img{width:100%;height:100%;object-fit:cover;}
+.story-name{font-size:11px;color:var(--muted);font-weight:600;}
+
+.conv-list{flex:1;padding:0 16px;}
+.conv{
+  display:flex;gap:13px;align-items:center;
+  padding:13px 8px;cursor:pointer;
+  border-bottom:1px solid var(--border);
+  border-radius:18px;transition:background .15s;
+}
+.conv:hover{background:var(--glass);}
+.conv-av-wrap{position:relative;flex-shrink:0;}
+.conv-av{width:56px;height:56px;border-radius:50%;object-fit:cover;
+  border:2px solid var(--border);}
+.online-dot{
+  width:13px;height:13px;border-radius:50%;background:#4ECDC4;
+  border:2.5px solid rgba(10,15,30,.9);
+  position:absolute;bottom:1px;right:1px;
+}
+.conv-info{flex:1;min-width:0;}
+.conv-name-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+.conv-name{font-size:15px;font-weight:700;}
+.conv-time{font-size:11px;color:var(--dim);}
+.conv-preview{font-size:13px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conv-unread{
+  background:var(--rose);color:white;
+  font-size:11px;font-weight:800;
+  min-width:20px;height:20px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 4px;flex-shrink:0;
+}
+
+/* ─────────────────────────────────────────
+   CHAT
+───────────────────────────────────────── */
+.chat{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.chat-header{
+  padding:8px 18px 12px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.chat-back{font-size:22px;cursor:pointer;color:var(--rose);padding:4px;}
+.chat-av{width:44px;height:44px;border-radius:50%;object-fit:cover;
+  border:2px solid rgba(232,160,80,.4);}
+.chat-hinfo{flex:1;}
+.chat-hname{font-size:16px;font-weight:700;}
+.chat-hstatus{font-size:12px;color:#4ECDC4;font-weight:600;}
+.chat-hmore{font-size:22px;color:var(--muted);cursor:pointer;padding:4px;}
+.chat-msgs{
+  flex:1;overflow-y:auto;padding:16px 18px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.chat-msgs::-webkit-scrollbar{display:none;}
+.msg-row{display:flex;}
+.msg-row.me{justify-content:flex-end;}
+.bubble{
+  max-width:73%;padding:11px 16px;
+  border-radius:22px;font-size:14px;line-height:1.55;
+  font-weight:500;
+}
+.bubble.them{
+  background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(12px);border-bottom-left-radius:6px;
+}
+.bubble.me{
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  border-bottom-right-radius:6px;
+}
+.btime{font-size:10px;color:var(--dim);margin-top:3px;}
+.msg-row.me .btime{text-align:right;}
+.chat-bar{
+  padding:10px 14px 24px;display:flex;gap:10px;align-items:flex-end;
+  border-top:1px solid var(--border);flex-shrink:0;
+}
+.chat-input{
+  flex:1;padding:13px 16px;
+  background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(14px);
+  border-radius:26px;color:white;
+  font-family:'Nunito',sans-serif;font-size:14px;font-weight:500;
+  outline:none;resize:none;transition:border-color .2s;
+}
+.chat-input:focus{border-color:rgba(232,100,122,.45);}
+.chat-input::placeholder{color:var(--dim);}
+.send-btn{
+  width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  border:none;color:white;font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(232,100,122,.4);
+  transition:transform .15s;flex-shrink:0;
+}
+.send-btn:active{transform:scale(.88);}
+
+/* ─────────────────────────────────────────
+   PROFIL & ENREGISTREMENT
+───────────────────────────────────────── */
+.profile-scr{flex:1;overflow-y:auto;padding-bottom:90px;}
+.profile-scr::-webkit-scrollbar{display:none;}
+.profile-cover{height:210px;position:relative;}
+.profile-cover img{width:100%;height:100%;object-fit:cover;}
+.cover-ov{position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 30%,rgba(10,15,30,.95) 100%);}
+.profile-av-row{
+  padding:0 22px;margin-top:-52px;
+  display:flex;justify-content:space-between;align-items:flex-end;
+  margin-bottom:14px;
+}
+.profile-av{width:92px;height:92px;border-radius:50%;object-fit:cover;
+  border:4px solid rgba(10,15,30,.9);}
+.edit-btn{
+  padding:10px 20px;background:var(--glass);
+  border:1px solid var(--border);backdrop-filter:blur(12px);
+  border-radius:22px;color:var(--offwhite);
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.edit-btn:hover{background:rgba(255,255,255,.2);}
+.profile-names{padding:0 22px 14px;}
+.pname{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;margin-bottom:3px;}
+.ptag2{font-size:13px;color:var(--muted);}
+.pstats{display:flex;padding:0 22px 18px;gap:8px;}
+.pstat{
+  flex:1;background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(12px);border-radius:18px;padding:14px;text-align:center;
+}
+.pstat-n{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--amber);}
+.pstat-l{font-size:11px;color:var(--muted);margin-top:2px;font-weight:600;}
+
+/* Section enregistrement */
+.rec-section{padding:0 22px 20px;}
+.rec-title{font-size:15px;font-weight:800;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;}
+.rec-cards{display:flex;gap:10px;}
+.rec-card{
+  flex:1;background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(14px);border-radius:20px;
+  padding:16px 12px;text-align:center;cursor:pointer;
+  transition:all .22s;position:relative;overflow:hidden;
+}
+.rec-card:hover{background:rgba(255,255,255,.18);transform:translateY(-2px);}
+.rec-card.has-rec{border-color:rgba(232,160,80,.45);}
+.rec-icon{font-size:32px;margin-bottom:8px;}
+.rec-lbl{font-size:12px;font-weight:700;color:var(--offwhite);margin-bottom:4px;}
+.rec-sub{font-size:10px;color:var(--muted);}
+.rec-indicator{
+  position:absolute;top:8px;right:8px;
+  width:8px;height:8px;border-radius:50%;background:#4ECDC4;
+}
+
+/* Enregistrement en cours */
+.recording-overlay{
+  position:absolute;inset:0;z-index:200;
+  background:rgba(10,15,30,.93);backdrop-filter:blur(32px);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:36px;animation:fadeIn .25s ease;
+}
+.rec-pulse{
+  width:120px;height:120px;border-radius:50%;
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  display:flex;align-items:center;justify-content:center;
+  font-size:48px;margin-bottom:24px;
+  animation:pulse-rec 1s ease-in-out infinite;
+  box-shadow:0 0 0 0 rgba(232,100,122,.5);
+}
+@keyframes pulse-rec{
+  0%{transform:scale(1);box-shadow:0 0 0 0 rgba(232,100,122,.5);}
+  70%{transform:scale(1.05);box-shadow:0 0 0 24px rgba(232,100,122,0);}
+  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(232,100,122,0);}
+}
+.rec-status{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;
+  margin-bottom:6px;}
+.rec-timer{font-size:48px;font-weight:800;color:var(--amber-soft);
+  font-variant-numeric:tabular-nums;margin-bottom:6px;letter-spacing:-1px;}
+.rec-hint{font-size:13px;color:var(--muted);margin-bottom:32px;}
+.rec-progress{
+  width:220px;height:5px;background:rgba(255,255,255,.12);
+  border-radius:3px;margin-bottom:28px;overflow:hidden;
+}
+.rec-progress-fill{
+  height:100%;border-radius:3px;
+  background:linear-gradient(90deg,#E8A050,#E8647A);
+  transition:width .1s linear;
+}
+.rec-stop{
+  padding:16px 52px;border-radius:22px;
+  background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  color:var(--offwhite);font-family:'Nunito',sans-serif;
+  font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;
+}
+.rec-stop:hover{background:rgba(255,255,255,.2);}
+
+/* intérêts & settings */
+.psection{padding:0 22px 18px;}
+.psection-title{font-size:14px;font-weight:800;margin-bottom:12px;
+  text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.itags{display:flex;flex-wrap:wrap;gap:8px;}
+.itag{
+  padding:8px 16px;background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(12px);border-radius:30px;
+  font-size:13px;font-weight:600;
+}
+.setting{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer;
+}
+.setting-l{display:flex;align-items:center;gap:12px;}
+.setting-icon{font-size:18px;width:26px;text-align:center;}
+.toggle{width:48px;height:26px;border-radius:13px;
+  background:var(--rose);position:relative;cursor:pointer;transition:background .2s;}
+.toggle::after{
+  content:'';position:absolute;width:20px;height:20px;background:white;
+  border-radius:50%;top:3px;right:3px;transition:left .2s,right .2s;
+}
+.toggle.off{background:rgba(255,255,255,.18);}
+.toggle.off::after{right:auto;left:3px;}
+
+/* ─────────────────────────────────────────
+   FILTRES
+───────────────────────────────────────── */
+.filters-ov{
+  position:absolute;inset:0;z-index:150;
+  background:rgba(10,15,30,.92);backdrop-filter:blur(32px);
+  display:flex;flex-direction:column;animation:slideUp .32s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.filters-handle{width:44px;height:4px;background:var(--dim);border-radius:2px;
+  margin:16px auto;}
+.filters-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;
+  padding:0 22px 18px;}
+.filters-body{flex:1;overflow-y:auto;padding:0 22px;}
+.filters-body::-webkit-scrollbar{display:none;}
+.fgroup{margin-bottom:28px;}
+.flabel{font-size:12px;font-weight:800;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+.frank{font-size:24px;font-weight:800;color:var(--amber-soft);margin-bottom:12px;}
+.fslider{
+  width:100%;height:4px;background:var(--border);border-radius:2px;
+  -webkit-appearance:none;outline:none;cursor:pointer;accent-color:var(--rose);
+}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.foption{
+  padding:13px;background:var(--glass);border:2px solid var(--border);
+  border-radius:16px;text-align:center;cursor:pointer;transition:all .2s;
+  font-size:13px;font-weight:600;backdrop-filter:blur(12px);
+}
+.foption.active{border-color:var(--rose);background:rgba(232,100,122,.1);color:var(--rose);}
+.finterests{display:flex;flex-wrap:wrap;gap:8px;}
+.fibtn{
+  padding:8px 15px;background:var(--glass);border:2px solid var(--border);
+  border-radius:30px;font-size:12px;font-weight:700;cursor:pointer;
+  transition:all .2s;color:var(--offwhite);backdrop-filter:blur(12px);
+}
+.fibtn.active{border-color:var(--rose);background:rgba(232,100,122,.12);color:var(--rose);}
+.filter-apply{
+  margin:14px 22px 28px;padding:18px;
+  background:linear-gradient(135deg,#E8647A,#E8A050);
+  border:none;border-radius:22px;width:calc(100% - 44px);
+  color:white;font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;
+  cursor:pointer;box-shadow:0 8px 28px rgba(232,100,122,.35);
+  transition:all .2s;
+}
+.filter-apply:hover{transform:translateY(-2px);}
+
+/* ─────────────────────────────────────────
+   MATCH POPUP
+───────────────────────────────────────── */
+.match-popup{
+  position:absolute;inset:0;z-index:180;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 28px;text-align:center;
+  background:rgba(10,15,30,.93);backdrop-filter:blur(28px);
+}
+.match-emoji{font-size:52px;margin-bottom:4px;animation:matchPop .5s cubic-bezier(.175,.885,.32,1.275);}
+.match-title{
+  font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:700;
+  background:linear-gradient(135deg,#F5C883,#E8647A);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:6px;
+  animation:matchPop .5s .1s cubic-bezier(.175,.885,.32,1.275) both;
+}
+@keyframes matchPop{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+.match-sub{font-size:15px;color:var(--muted);margin-bottom:30px;}
+.match-photos{display:flex;align-items:center;gap:16px;margin-bottom:32px;}
+.match-ph{width:88px;height:88px;border-radius:50%;object-fit:cover;
+  border:3px solid rgba(232,160,80,.5);}
+.match-me{
+  width:88px;height:88px;border-radius:50%;
+  background:linear-gradient(135deg,#E8647A,#C084FC);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;border:3px solid var(--border);
+}
+.match-hearts{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.match-heart{font-size:26px;animation:heartbeat 1s infinite;}
+@keyframes heartbeat{0%,100%{transform:scale(1);}50%{transform:scale(1.25);}}
+.match-btn{
+  width:100%;padding:17px;border:none;border-radius:22px;
+  font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;
+  cursor:pointer;margin-bottom:12px;transition:all .2s;
+}
+.match-btn-p{background:linear-gradient(135deg,#E8647A,#E8A050);color:white;
+  box-shadow:0 8px 28px rgba(232,100,122,.35);}
+.match-btn-s{background:var(--glass);color:var(--offwhite);
+  border:1px solid var(--border);backdrop-filter:blur(12px);}
+
+/* ─────────────────────────────────────────
+   TOAST & DIVERS
+───────────────────────────────────────── */
+.toast{
+  position:absolute;bottom:106px;left:50%;transform:translateX(-50%);
+  background:var(--glass-med);border:1px solid var(--border);
+  backdrop-filter:blur(20px);border-radius:22px;
+  padding:11px 22px;font-size:13px;font-weight:600;
+  white-space:nowrap;z-index:400;animation:fadeUp .3s ease;
+  box-shadow:var(--shadow-sm);
+}
+.empty-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:40px;
+}
+.empty-icon{font-size:60px;margin-bottom:16px;opacity:.7;}
+.empty-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;
+  margin-bottom:8px;}
+.empty-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.6;}
+.empty-link{color:var(--rose);font-weight:700;cursor:pointer;font-size:14px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
+@keyframes fadeUpEl{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+`;
+
+
+// ─── PROFILS ────────────────────────────────────────────────────────
+const PROFILES = [
+  { id:1, name:"Léa", age:27, job:"Designer UX", city:"Paris",
+    bio:"Passionnée d'art contemporain et de randonnée. Je cherche quelqu'un qui aime autant les musées que les sommets.",
+    distance:"2 km", interests:["Art","Randonnée","Photo","Yoga"],
+    verified:true, premium:false, match:94, hasVoice:true, hasVideo:true,
+    photo:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80" },
+  { id:2, name:"Sofia", age:25, job:"Chef cuisinière", city:"Lyon",
+    bio:"La vie est trop courte pour manger sans plaisir. J'adore cuisiner et explorer de nouvelles cultures.",
+    distance:"5 km", interests:["Cuisine","Voyage","Musique","Cinéma"],
+    verified:true, premium:true, match:88, hasVoice:true, hasVideo:false,
+    photo:"https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80" },
+  { id:3, name:"Camille", age:29, job:"Architecte", city:"Bordeaux",
+    bio:"Je construis des espaces le jour et des rêves la nuit. Amatrice de jazz et de café bien trop fort.",
+    distance:"8 km", interests:["Architecture","Jazz","Lecture","Running"],
+    verified:false, premium:true, match:79, hasVoice:false, hasVideo:true,
+    photo:"https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&q=80" },
+  { id:4, name:"Emma", age:26, job:"Journaliste", city:"Paris",
+    bio:"Toujours curieuse, jamais satisfaite. Je cherche quelqu'un pour débattre jusqu'à 2h du matin.",
+    distance:"3 km", interests:["Écriture","Débats","Théâtre","Voyages"],
+    verified:true, premium:false, match:91, hasVoice:true, hasVideo:true,
+    photo:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80" },
+];
+
+// ─── CONVERSATIONS ───────────────────────────────────────────────────
+const MESSAGES_DATA = [
+  { id:1, name:"Léa", photo:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80",
+    online:true, lastMsg:"Haha oui exactement ! Tu connais cet endroit ?", time:"2 min", unread:2,
+    chat:[
+      { from:"them", text:"Salut ! J'ai vu que tu aimais la randonnée 🏔️", time:"14:20" },
+      { from:"me",   text:"Oui ! Je fais souvent des sorties dans les Alpes", time:"14:22" },
+      { from:"them", text:"Le mont Blanc l'été dernier c'était incroyable ✨", time:"14:23" },
+      { from:"me",   text:"Moi j'ai fait la Mer de Glace en juin", time:"14:25" },
+      { from:"them", text:"Haha oui exactement ! Tu connais cet endroit ?", time:"14:27" },
+    ]},
+  { id:2, name:"Emma", photo:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80",
+    online:true, lastMsg:"Super ! On se retrouve samedi alors ?", time:"1h", unread:0,
+    chat:[
+      { from:"them", text:"Hey ! Tu as vu le dernier film de Villeneuve ?", time:"11:00" },
+      { from:"me",   text:"Non pas encore, il est bien ?", time:"11:05" },
+      { from:"them", text:"Absolument brillant. On pourrait le voir ensemble ?", time:"11:06" },
+      { from:"them", text:"Super ! On se retrouve samedi alors ?", time:"11:11" },
+    ]},
+  { id:3, name:"Sofia", photo:"https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80",
+    online:false, lastMsg:"Je t'enverrai la recette 😄", time:"3h", unread:0,
+    chat:[{ from:"them", text:"Je t'enverrai la recette 😄", time:"09:05" }]},
+];
+
+// ─── COMPOSANT PRINCIPAL ────────────────────────────────────────────
+export default function AuraApp() {
+  const [screen, setScreen]           = useState("splash");
+  const [authMode, setAuthMode]       = useState("login"); // "login" | "register"
+  const [authEmail, setAuthEmail]     = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName]       = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError]     = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [dbProfiles, setDbProfiles]   = useState([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [tab, setTab]                 = useState("discover");
+  const [profiles, setProfiles]       = useState(PROFILES);
+  const [bgIdx, setBgIdx]             = useState(0);
+  const [bgNext, setBgNext]           = useState(1);
+  const [bgCrossfade, setBgCrossfade] = useState(false);
+  const [showMatch, setShowMatch]     = useState(false);
+  const [matchedProfile, setMatchedProfile] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [mediaPlayer, setMediaPlayer] = useState(null);
+  const [openChat, setOpenChat]       = useState(null);
+  const [msgs, setMsgs]               = useState(MESSAGES_DATA);
+  const [chatInput, setChatInput]     = useState("");
+  const [toast, setToast]             = useState(null);
+  const [genderF, setGenderF]         = useState("Femmes");
+  const [ageF, setAgeF]               = useState(35);
+  const [distF, setDistF]             = useState(25);
+  const [intF, setIntF]               = useState(["Musique","Voyage"]);
+  const [drag, setDrag]               = useState({ on:false, x:0, y:0, sx:0, sy:0 });
+  const [recording, setRecording]     = useState(null);
+  const [recHas, setRecHas]           = useState({ voice:false, video:false });
+  const [playing, setPlaying]         = useState(false);
+  const [playProg, setPlayProg]       = useState(0);
+  const recTimerRef  = useRef(null);
+  const playTimerRef = useRef(null);
+
+  // BG crossfade cycling
+  async function loadProfiles() {
+    try {
+      const userId = supabase.auth.getUserId();
+      const data = await supabase.select("profiles",
+        "?id=neq." + userId + "&limit=20&order=created_at.desc");
+      if (Array.isArray(data) && data.length > 0) {
+        setDbProfiles(data.map(p => ({
+          id: p.id, name: p.name || "Membre", age: p.age || 25,
+          job: p.job || "AURA", city: p.city || "Paris",
+          bio: p.bio || "Nouveau sur AURA",
+          distance: "? km", interests: p.interests || ["Voyages"],
+          verified: p.verified || false, premium: p.premium || false,
+          match: Math.floor(75 + Math.random()*24),
+          hasVoice: !!p.voice_url, hasVideo: !!p.video_url,
+          photo: p.photo_url || null,
+        })));
+      }
+    } catch(e) { console.log(e); }
+  }
+
+  async function handleAuth() {
+    setAuthLoading(true); setAuthError("");
+    try {
+      if (authMode === "register") {
+        const res = await supabase.auth.signUp({
+          email: authEmail, password: authPassword,
+          options: { data: { name: authName } }
+        });
+        if (res.error) { setAuthError(res.error.message || res.msg || JSON.stringify(res.error)); }
+        else {
+          const login = await supabase.auth.signIn({ email: authEmail, password: authPassword });
+          if (login.access_token) {
+            setCurrentUser({ id: login.user?.id });
+            await loadProfiles();
+            setScreen("discover");
+          } else { setAuthError("Compte cree ! Connecte-toi."); setAuthMode("login"); }
+        }
+      } else {
+        const res = await supabase.auth.signIn({ email: authEmail, password: authPassword });
+        if (res.access_token) {
+          setCurrentUser({ id: res.user?.id });
+          await loadProfiles();
+          setScreen("discover");
+        } else { setAuthError(res.error?.message || res.error_description || res.msg || "Email ou mot de passe incorrect. Verifie tes identifiants."); }
+      }
+    } catch(e) { console.error("handleAuth error:", e); setAuthError("Erreur: " + e.message); }
+    setAuthLoading(false);
+  }
+
+    // Auth check on startup
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (supabase.auth.isLoggedIn()) {
+        setCurrentUser({ id: supabase.auth.getUserId() });
+        loadProfiles();
+        setScreen("discover");
+      } else {
+        setScreen("auth");
+      }
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      const next = (bgIdx + 1) % BG_SCENES.length;
+      setBgNext(next);
+      setBgCrossfade(true);
+      setTimeout(() => {
+        setBgIdx(next);
+        setBgCrossfade(false);
+      }, 1400);
+    }, 7000);
+    return () => clearInterval(t);
+  }, [bgIdx]);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2200);
+  };
+
+  // ── Swipe ──
+  const onMD = e => setDrag({ on:true, x:0, y:0, sx:e.clientX, sy:e.clientY });
+  const onMM = e => { if (!drag.on) return; setDrag(d => ({...d, x:e.clientX-d.sx, y:e.clientY-d.sy})); };
+  const onMU = () => {
+    if (!drag.on) return;
+    if (drag.x > 85) doLike();
+    else if (drag.x < -85) doPass();
+    setDrag({ on:false, x:0, y:0, sx:0, sy:0 });
+  };
+
+  const doLike = () => {
+    if (!profiles.length) return;
+    const p = profiles[0];
+    if (Math.random() > 0.38) { setMatchedProfile(p); setShowMatch(true); }
+    else showToast("💛 Tu as liké " + p.name);
+    setProfiles(prev => prev.slice(1));
+    setBgIdx(i => (i+1) % BG_SCENES.length);
+  };
+  const doPass = () => {
+    if (!profiles.length) return;
+    setProfiles(prev => prev.slice(1));
+    setBgIdx(i => (i+1) % BG_SCENES.length);
+    showToast("👋 Profil passé");
+  };
+  const doUndo = () => { setProfiles(PROFILES); showToast("↩ Retour au début"); };
+
+  // ── Recording ──
+  const startRec = (type) => {
+    setRecording({ type, elapsed: 0 });
+    let t = 0;
+    recTimerRef.current = setInterval(() => {
+      t += 0.1;
+      setRecording(r => ({ ...r, elapsed: Math.min(t, 10) }));
+      if (t >= 10) stopRec(type);
+    }, 100);
+  };
+  const stopRec = (type) => {
+    clearInterval(recTimerRef.current);
+    setRecording(null);
+    setRecHas(prev => ({ ...prev, [type || recording?.type]: true }));
+    showToast(type === "voice" || (recording?.type === "voice") ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
+  };
+
+  // ── Voice playback simulation ──
+  const startPlay = () => {
+    setPlaying(true); setPlayProg(0);
+    let p = 0;
+    playTimerRef.current = setInterval(() => {
+      p += 1;
+      setPlayProg(p);
+      if (p >= 100) { clearInterval(playTimerRef.current); setPlaying(false); setPlayProg(0); }
+    }, 100);
+  };
+  const stopPlay = () => {
+    clearInterval(playTimerRef.current); setPlaying(false); setPlayProg(0);
+  };
+
+  // ── Chat ──
+  const sendMsg = () => {
+    if (!chatInput.trim() || !openChat) return;
+    setMsgs(prev => prev.map(c =>
+      c.id === openChat.id
+        ? { ...c, chat: [...c.chat, { from:"me", text:chatInput, time:"Maintenant" }], lastMsg:chatInput, unread:0 }
+        : c
+    ));
+    setChatInput("");
+  };
+
+  const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
+  const cur = profiles[0], nxt = profiles[1], nn = profiles[2];
+  const likeOp = Math.max(0, Math.min(1, drag.x / 85));
+  const nopeOp = Math.max(0, Math.min(1, -drag.x / 85));
+  const cardStyle = drag.on
+    ? { transform:`translate(${drag.x}px,${drag.y}px) rotate(${drag.x*0.07}deg)`, transition:"none" }
+    : {};
+
+  return (
+    <>
+      <style>{css}</style>
+      <div className="shell">
+
+        {/* FOND PHOTO-RÉALISTE */}
+        <div className="bg-wrap">
+          <SceneBg sceneIndex={bgIdx} opacity={1} />
+          <SceneBg sceneIndex={bgNext} opacity={bgCrossfade ? 1 : 0} transition="opacity 1.8s ease" />
+          <div className="bg-overlay"/>
+        </div>
+
+        {/* ═══════════════════════════════════
+            SPLASH
+        ═══════════════════════════════════ */}
+        {screen === "auth" && (
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px",zIndex:10}}>
+          <div style={{width:"100%",maxWidth:340}}>
+            {/* Logo */}
+            <div style={{textAlign:"center",marginBottom:32}}>
+              <div style={{fontFamily:"Cormorant Garamond,serif",fontSize:52,fontWeight:700,background:"linear-gradient(135deg,#E8647A,#E8A050)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>aura</div>
+              <div style={{color:"rgba(255,255,255,0.6)",fontSize:14,marginTop:4}}>Trouve ta personne ✨</div>
+            </div>
+            {/* Tabs */}
+            <div style={{display:"flex",background:"rgba(255,255,255,0.08)",borderRadius:12,padding:4,marginBottom:24}}>
+              {["login","register"].map(m=>(
+                <button key={m} onClick={()=>{setAuthMode(m);setAuthError("");}}
+                  style={{flex:1,padding:"10px 0",borderRadius:9,border:"none",cursor:"pointer",fontSize:14,fontWeight:600,fontFamily:"Nunito,sans-serif",
+                    background:authMode===m?"linear-gradient(135deg,#E8647A,#E8A050)":"transparent",
+                    color:authMode===m?"white":"rgba(255,255,255,0.55)",transition:"all 0.2s"}}>
+                  {m==="login"?"Se connecter":"S'inscrire"}
+                </button>
+              ))}
+            </div>
+            {/* Fields */}
+            {authMode==="register" && (
+              <div style={{marginBottom:14}}>
+                <input value={authName} onChange={e=>setAuthName(e.target.value)}
+                  placeholder="Ton prénom" type="text"
+                  style={{width:"100%",padding:"14px 16px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.08)",color:"white",fontSize:15,fontFamily:"Nunito,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+              </div>
+            )}
+            <div style={{marginBottom:14}}>
+              <input value={authEmail} onChange={e=>setAuthEmail(e.target.value)}
+                placeholder="Email" type="email"
+                style={{width:"100%",padding:"14px 16px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.08)",color:"white",fontSize:15,fontFamily:"Nunito,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <input value={authPassword} onChange={e=>setAuthPassword(e.target.value)}
+                placeholder="Mot de passe" type="password"
+                onKeyDown={e=>e.key==="Enter"&&handleAuth()}
+                style={{width:"100%",padding:"14px 16px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.08)",color:"white",fontSize:15,fontFamily:"Nunito,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            {authError && <div style={{color:"#ff6b6b",fontSize:13,marginBottom:14,textAlign:"center",padding:"8px 12px",background:"rgba(255,80,80,0.1)",borderRadius:8}}>{authError}</div>}
+            <button onClick={handleAuth} disabled={authLoading}
+              style={{width:"100%",padding:"15px",borderRadius:12,border:"none",cursor:authLoading?"not-allowed":"pointer",
+                background:"linear-gradient(135deg,#E8647A,#E8A050)",color:"white",fontSize:16,fontWeight:700,fontFamily:"Nunito,sans-serif",
+                opacity:authLoading?0.7:1,transition:"opacity 0.2s"}}>
+              {authLoading ? "..." : authMode==="login" ? "Se connecter" : "Créer mon compte"}
+            </button>
+            <div style={{textAlign:"center",marginTop:20,color:"rgba(255,255,255,0.35)",fontSize:12}}>
+              En continuant tu acceptes nos CGU
+            </div>
+          </div>
+        </div>
+      )}
+
+      {screen === "splash" && (
+          <div className="screen">
+            <div className="splash">
+              {/* status bar haut */}
+              <div className="splash-status">
+                <span style={{ fontSize:15, fontWeight:700 }}>9:41</span>
+                <span style={{ fontSize:13 }}>●●● WiFi 🔋</span>
+              </div>
+
+              {/* Logo centré */}
+              <div className="splash-logo">Aura</div>
+              <div className="splash-tag">Find your spark</div>
+
+              {/* Pills features */}
+              <div className="splash-pills">
+                <div className="splash-pill">🔮 Matching IA</div>
+                <div className="splash-pill">🎤 Message vocal</div>
+                <div className="splash-pill">🎬 Vidéo 10s</div>
+                <div className="splash-pill">🛡️ Profils vérifiés</div>
+              </div>
+
+              <div className="splash-divider"/>
+
+              {/* CTAs */}
+              <button className="btn-primary" onClick={() => setScreen("app")}>
+                Commencer gratuitement ✦
+              </button>
+              <button className="btn-ghost" onClick={() => setScreen("app")}>
+                J'ai déjà un compte
+              </button>
+
+              <div className="splash-footnote">
+                2 millions de membres · 150 000 couples formés
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════
+            APP PRINCIPALE
+        ═══════════════════════════════════ */}
+        {screen === "app" && (
+          <div className="screen">
+            <div className="status-bar">
+              <span className="s-time">9:41</span>
+              <div className="s-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div>
+            </div>
+
+            {/* ── DISCOVER ── */}
+            {tab === "discover" && (
+              <div className="discover">
+                <div className="disc-header">
+                  <div className="logo">Aura</div>
+                  <div style={{ display:"flex", gap:10 }}>
+                    <div className="icon-btn" onClick={() => setShowFilters(true)}>⚙️</div>
+                    <div className="icon-btn">🔔</div>
+                  </div>
+                </div>
+
+                <div className="card-stack" onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}>
+                  {nn && <div className="pcard bcard2" style={{ backgroundImage:`url(${nn.photo})`, backgroundSize:"cover", backgroundPosition:"center" }}><div className="pcard-grad"/></div>}
+                  {nxt && <div className="pcard bcard1" style={{ backgroundImage:`url(${nxt.photo})`, backgroundSize:"cover", backgroundPosition:"center" }}><div className="pcard-grad"/></div>}
+
+                  {cur ? (
+                    <div className="pcard fcard"
+                      style={{ backgroundImage:`url(${cur.photo})`, backgroundSize:"cover", backgroundPosition:"center", ...cardStyle }}
+                      onMouseDown={onMD}
+                    >
+                      <div className="pcard-grad"/>
+                      <div className="swipe-ov like" style={{ opacity:likeOp }}><div className="swipe-lbl like">LIKE ✓</div></div>
+                      <div className="swipe-ov nope" style={{ opacity:nopeOp }}><div className="swipe-lbl nope">NOPE ✗</div></div>
+
+                      <div className="pcard-top">
+                        <div className="match-badge">❤️ {cur.match}%</div>
+                        <div className="pcard-badges">
+                          {cur.verified && <div className="badge-verified">✅ Vérifié</div>}
+                          {cur.premium && <div className="badge-premium">⭐ Premium</div>}
+                        </div>
+                      </div>
+
+                      {/* Badges médias */}
+                      <div style={{ position:"absolute", bottom:96, left:16, right:16, display:"flex", gap:8 }}>
+                        {cur.hasVoice && (
+                          <div className="media-badge voice" onClick={e => { e.stopPropagation(); setMediaPlayer({ profile:cur, type:"voice" }); }}>
+                            🎤 Message vocal
+                          </div>
+                        )}
+                        {cur.hasVideo && (
+                          <div className="media-badge video" onClick={e => { e.stopPropagation(); setMediaPlayer({ profile:cur, type:"video" }); }}>
+                            🎬 Vidéo 10s
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pcard-body">
+                        <div className="pcard-name-row">
+                          <div className="pcard-name">{cur.name}</div>
+                          <div className="pcard-age">{cur.age}</div>
+                        </div>
+                        <div className="pcard-job">💼 {cur.job} · {cur.city}</div>
+                        <div className="pcard-tags">{cur.interests.map(t => <span key={t} className="ptag">{t}</span>)}</div>
+                        <div className="pcard-dist">📍 {cur.distance}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <div className="empty-icon">✨</div>
+                      <div className="empty-title">C'est tout pour aujourd'hui</div>
+                      <div className="empty-sub">Reviens demain pour découvrir de nouveaux profils près de toi.</div>
+                      <div className="empty-link" onClick={doUndo}>🔄 Recommencer la démo</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="actions">
+                  <div className="act-btn act-pass" onClick={doPass}>✕</div>
+                  <div className="act-btn act-undo" onClick={doUndo}>↩</div>
+                  <div className="act-btn act-like" onClick={doLike}>♥</div>
+                  <div className="act-btn act-star" onClick={() => showToast("⭐ Super Like envoyé !")}>⭐</div>
+                  <div className="act-btn act-boost" onClick={() => showToast("🚀 Boost activé !")}>⚡</div>
+                </div>
+              </div>
+            )}
+
+            {/* ── MESSAGES ── */}
+            {tab === "messages" && !openChat && (
+              <div className="messages">
+                <div className="sec-header" style={{ paddingTop:8 }}>
+                  <div className="sec-title">Messages</div>
+                  <div className="icon-btn">✏️</div>
+                </div>
+                <div className="stories">
+                  {(dbProfiles.length > 0 ? dbProfiles : PROFILES).map(p => (
+                    <div key={p.id} className="story" onClick={() => showToast(`Story de ${p.name}`)}>
+                      <div className="story-ring">
+                        <div className="story-inner"><img src={p.photo} alt={p.name}/></div>
+                      </div>
+                      <span className="story-name">{p.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="conv-list">
+                  {msgs.map(c => (
+                    <div key={c.id} className="conv" onClick={() => setOpenChat(c)}>
+                      <div className="conv-av-wrap">
+                        <img className="conv-av" src={c.photo} alt={c.name}/>
+                        {c.online && <div className="online-dot"/>}
+                      </div>
+                      <div className="conv-info">
+                        <div className="conv-name-row">
+                          <span className="conv-name">{c.name}</span>
+                          <span className="conv-time">{c.time}</span>
+                        </div>
+                        <div className="conv-preview">{c.lastMsg}</div>
+                      </div>
+                      {c.unread > 0 && <div className="conv-unread">{c.unread}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── CHAT ── */}
+            {tab === "messages" && openChat && chatConv && (
+              <div className="chat">
+                <div className="chat-header">
+                  <div className="chat-back" onClick={() => setOpenChat(null)}>←</div>
+                  <img className="chat-av" src={chatConv.photo} alt={chatConv.name}/>
+                  <div className="chat-hinfo">
+                    <div className="chat-hname">{chatConv.name}</div>
+                    <div className="chat-hstatus">{chatConv.online ? "● En ligne" : "Hors ligne"}</div>
+                  </div>
+                  <div className="chat-hmore">⋯</div>
+                </div>
+                <div className="chat-msgs">
+                  {chatConv.chat.map((m, i) => (
+                    <div key={i}>
+                      <div className={`msg-row ${m.from}`}><div className={`bubble ${m.from}`}>{m.text}</div></div>
+                      <div className={`msg-row ${m.from}`}><div className="btime">{m.time}</div></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="chat-bar">
+                  <textarea className="chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)}
+                    placeholder="Écris un message..." rows={1}
+                    onKeyDown={e => { if (e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}}
+                  />
+                  <div className="send-btn" onClick={sendMsg}>➤</div>
+                </div>
+              </div>
+            )}
+
+            {/* ── PROFIL ── */}
+            {tab === "profile" && (
+              <div className="profile-scr">
+                <div className="profile-cover">
+                  <img src={PROFILES[1].photo} alt="cover"/>
+                  <div className="cover-ov"/>
+                </div>
+                <div className="profile-av-row">
+                  <img className="profile-av" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80" alt="me"/>
+                  <button className="edit-btn">✏️ Modifier</button>
+                </div>
+                <div className="profile-names">
+                  <div className="pname">Thomas, 28</div>
+                  <div className="ptag2">💼 Développeur · Paris</div>
+                </div>
+                <div className="pstats">
+                  <div className="pstat"><div className="pstat-n">247</div><div className="pstat-l">Likes</div></div>
+                  <div className="pstat"><div className="pstat-n">18</div><div className="pstat-l">Matchs</div></div>
+                  <div className="pstat"><div className="pstat-n">94%</div><div className="pstat-l">Profil</div></div>
+                </div>
+
+                {/* Section enregistrement */}
+                <div className="rec-section">
+                  <div className="rec-title">🎙️ Présentation multimédia <span style={{ fontSize:11, color:"var(--muted)", fontWeight:400 }}>nouveauté</span></div>
+                  <div className="rec-cards">
+                    <div className={`rec-card ${recHas.voice ? "has-rec" : ""}`} onClick={() => startRec("voice")}>
+                      {recHas.voice && <div className="rec-indicator"/>}
+                      <div className="rec-icon">🎤</div>
+                      <div className="rec-lbl">Message vocal</div>
+                      <div className="rec-sub">{recHas.voice ? "✓ Enregistré" : "10 secondes"}</div>
+                    </div>
+                    <div className={`rec-card ${recHas.video ? "has-rec" : ""}`} onClick={() => startRec("video")}>
+                      {recHas.video && <div className="rec-indicator"/>}
+                      <div className="rec-icon">🎬</div>
+                      <div className="rec-lbl">Vidéo courte</div>
+                      <div className="rec-sub">{recHas.video ? "✓ Enregistrée" : "10 secondes"}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="psection">
+                  <div className="psection-title">Mes intérêts</div>
+                  <div className="itags">
+                    {["🎵 Musique","✈️ Voyage","🏃 Running","🎬 Cinéma","📚 Tech","🍕 Cuisine"].map(t => (
+                      <span key={t} className="itag">{t}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="psection">
+                  <div className="psection-title">Paramètres</div>
+                  {[
+                    { icon:"🔔", lbl:"Notifications", toggle:true, on:true },
+                    { icon:"🌍", lbl:"Visibilité du profil", toggle:true, on:true },
+                    { icon:"📍", lbl:"Géolocalisation", toggle:true, on:false },
+                    { icon:"🛡️", lbl:"Confidentialité & RGPD", arrow:true },
+                    { icon:"💳", lbl:"Abonnement Premium", arrow:true },
+                  ].map((s,i) => (
+                    <div key={i} className="setting" onClick={() => s.arrow && showToast(`Ouvre ${s.lbl}`)}>
+                      <div className="setting-l">
+                        <span className="setting-icon">{s.icon}</span>
+                        <span style={{ fontSize:14, fontWeight:600 }}>{s.lbl}</span>
+                      </div>
+                      {s.toggle && <div className={`toggle ${s.on?"":"off"}`}/>}
+                      {s.arrow && <span style={{ color:"var(--dim)" }}>›</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* BOTTOM NAV */}
+            <div className="bottom-nav">
+              {[
+                { id:"discover", icon:"🔮", lbl:"Découvrir" },
+                { id:"messages", icon:"💬", lbl:"Messages", badge:3 },
+                { id:"premium",  icon:"👑", lbl:"Premium" },
+                { id:"profile",  icon:"👤", lbl:"Profil" },
+              ].map(t => (
+                <div key={t.id} className={`nav-item ${tab===t.id?"active":""}`}
+                  onClick={() => { setTab(t.id); if (t.id!=="messages") setOpenChat(null); }}>
+                  {t.badge && tab!=="messages" && <div className="nav-badge">{t.badge}</div>}
+                  <div className="nav-icon">{t.icon}</div>
+                  <div className="nav-label">{t.lbl}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── ENREGISTREMENT EN COURS ── */}
+            {recording && (
+              <div className="recording-overlay">
+                <div className="rec-pulse">{recording.type==="voice" ? "🎤" : "🎬"}</div>
+                <div className="rec-status">
+                  {recording.type==="voice" ? "Enregistrement vocal" : "Enregistrement vidéo"}
+                </div>
+                <div className="rec-timer">{(10 - recording.elapsed).toFixed(1)}s</div>
+                <div className="rec-hint">
+                  {recording.type==="voice" ? "Présentez-vous en quelques mots…" : "Regardez la caméra et souriez…"}
+                </div>
+                <div className="rec-progress">
+                  <div className="rec-progress-fill" style={{ width:`${(recording.elapsed/10)*100}%` }}/>
+                </div>
+                <button className="rec-stop" onClick={() => stopRec()}>⏹ Arrêter</button>
+              </div>
+            )}
+
+            {/* ── LECTEUR MÉDIA (voice/video) ── */}
+            {mediaPlayer && (
+              <div className="media-overlay">
+                <img className="media-avatar" src={mediaPlayer.profile.photo} alt={mediaPlayer.profile.name}/>
+                <div className="media-name">{mediaPlayer.profile.name}</div>
+                <div className="media-sub">
+                  {mediaPlayer.type==="voice" ? "🎤 Message vocal • 10 sec" : "🎬 Vidéo de présentation • 10 sec"}
+                </div>
+
+                {mediaPlayer.type === "voice" && (
+                  <div className="voice-player">
+                    <div className="voice-bars">
+                      {Array.from({length:28}).map((_,i) => (
+                        <div key={i} className="vbar" style={{
+                          height: `${20 + Math.sin(i*0.7)*14 + Math.random()*12}px`,
+                          animationDelay:`${i*0.04}s`,
+                          animationPlayState: playing ? "running" : "paused",
+                          opacity: playing ? 1 : 0.35,
+                        }}/>
+                      ))}
+                    </div>
+                    <div className="voice-controls">
+                      <div className="play-btn" onClick={playing ? stopPlay : startPlay}>
+                        {playing ? "⏸" : "▶"}
+                      </div>
+                      <div className="voice-progress">
+                        <div className="voice-fill" style={{ width:`${playProg}%` }}/>
+                      </div>
+                      <span className="voice-time">{playing ? `${(playProg/10).toFixed(1)}s` : "0:10"}</span>
+                    </div>
+                  </div>
+                )}
+
+                {mediaPlayer.type === "video" && (
+                  <div className="video-player">
+                    <div className="video-placeholder">
+                      <div className="video-icon">▶️</div>
+                      <div className="video-label">VIDÉO DE PRÉSENTATION</div>
+                      <div style={{ fontSize:12, color:"var(--muted)" }}>{mediaPlayer.profile.name} • 10 secondes</div>
+                    </div>
+                    <div className="video-duration">0:10</div>
+                  </div>
+                )}
+
+                <button className="media-close" onClick={() => { setMediaPlayer(null); stopPlay(); }}>
+                  Fermer
+                </button>
+              </div>
+            )}
+
+            {/* ── FILTRES ── */}
+            {showFilters && (
+              <div className="filters-ov">
+                <div className="filters-handle"/>
+                <div className="filters-title">Affiner la recherche</div>
+                <div className="filters-body">
+                  <div className="fgroup">
+                    <div className="flabel">Tranche d'âge</div>
+                    <div className="frank">18 — {ageF} ans</div>
+                    <input className="fslider" type="range" min={20} max={55} value={ageF} onChange={e=>setAgeF(e.target.value)}/>
+                  </div>
+                  <div className="fgroup">
+                    <div className="flabel">Distance maximale</div>
+                    <div className="frank">{distF} km</div>
+                    <input className="fslider" type="range" min={5} max={100} value={distF} onChange={e=>setDistF(e.target.value)}/>
+                  </div>
+                  <div className="fgroup">
+                    <div className="flabel">Je cherche</div>
+                    <div className="fgrid">
+                      {["Femmes","Hommes","Non-binaires","Tout le monde"].map(g => (
+                        <div key={g} className={`foption ${genderF===g?"active":""}`} onClick={()=>setGenderF(g)}>{g}</div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="fgroup">
+                    <div className="flabel">Centres d'intérêt</div>
+                    <div className="finterests">
+                      {["Art","Cuisine","Voyage","Musique","Sport","Cinéma","Lecture","Gaming","Nature","Yoga"].map(i => (
+                        <div key={i} className={`fibtn ${intF.includes(i)?"active":""}`}
+                          onClick={()=>setIntF(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])}>{i}</div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="fgroup">
+                    <div className="flabel">Médias de présentation</div>
+                    <div className="fgrid">
+                      {["Avec vocal 🎤","Avec vidéo 🎬","Avec photo","Tous"].map(o => (
+                        <div key={o} className={`foption ${o==="Tous"?"active":""}`}>{o}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <button className="filter-apply" onClick={() => { setShowFilters(false); showToast("✅ Filtres appliqués"); }}>
+                  Appliquer les filtres
+                </button>
+              </div>
+            )}
+
+            {/* ── MATCH POPUP ── */}
+            {showMatch && matchedProfile && (
+              <div className="match-popup">
+                <div className="match-emoji">🎉</div>
+                <div className="match-title">C'est un Match !</div>
+                <div className="match-sub">Toi et {matchedProfile.name} vous vous êtes mutuellement plu ✨</div>
+                <div className="match-photos">
+                  <div className="match-me">😊</div>
+                  <div className="match-hearts">
+                    <div className="match-heart">💕</div>
+                    <div style={{ fontSize:12, color:"var(--muted)" }}>match</div>
+                  </div>
+                  <img className="match-ph" src={matchedProfile.photo} alt={matchedProfile.name}/>
+                </div>
+                <button className="match-btn match-btn-p"
+                  onClick={() => { setShowMatch(false); setTab("messages"); setOpenChat(msgs[0]); }}>
+                  💬 Envoyer un message
+                </button>
+                <button className="match-btn match-btn-s" onClick={() => setShowMatch(false)}>
+                  Continuer à explorer
+                </button>
+              </div>
+            )}
+
+            {/* TOAST */}
+            {toast && <div className="toast">{toast}</div>}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
