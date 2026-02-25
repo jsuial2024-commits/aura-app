@@ -2,23 +2,23 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Aura</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    #root { width: 100%; max-width: 430px; height: 100dvh; position: relative; overflow: hidden; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body{width:100%;height:100%;background:#0a0a0a;display:flex;justify-content:center;align-items:center;}
+    #root{width:100%;max-width:430px;height:100dvh;position:relative;overflow:hidden;}
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
+  <script type="text/babel" data-presets="react">
     const { useState, useRef, useEffect, useCallback } = React;
 
-// React loaded via CDN
+
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────
 const SUPABASE_URL = "https://izbclyrionmfcjdidnuo.supabase.co";
@@ -1017,7 +1017,7 @@ const MESSAGES_DATA = [
 ];
 
 // ─── COMPOSANT PRINCIPAL ────────────────────────────────────────────
-export default function AuraApp() {
+function AuraApp() {
   const [screen, setScreen]           = useState("splash");
   const [authMode, setAuthMode]       = useState("login"); // "login" | "register"
   const [authEmail, setAuthEmail]     = useState("");
@@ -1707,7 +1707,8 @@ export default function AuraApp() {
 }
 
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<AuraApp />);
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(AuraApp));
   </script>
 </body>
 </html>
