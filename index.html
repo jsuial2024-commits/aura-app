@@ -7,11 +7,9 @@
 </head>
 <body style="margin:0;padding:0;background:#0a0a0a;overflow:hidden;width:100%;height:100vh;">
   <div id="root" style="width:100%;height:100vh;height:100dvh;"></div>
-
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script>
-    // Expose React hooks globally for the app
     var useState = React.useState;
     var useRef = React.useRef;
     var useEffect = React.useEffect;
@@ -232,7 +230,7 @@ function SceneBg({
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
-      inset: 0,
+      inset: -12,
       background: BG_SCENES[sceneIndex % BG_SCENES.length],
       backgroundSize: "cover",
       filter: "blur(8px) saturate(1.3) brightness(0.9)",
@@ -306,11 +304,11 @@ body{
   object-fit:cover;
 }
 .bg-landscape-next.visible{ opacity:1; }
-.bg-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(10,16,40,0.10) 0%,rgba(5,8,20,0.05) 50%,rgba(10,16,40,0.12) 100%);}
+.bg-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:1;}
 
 /* ── SCREEN ── */
 .screen{
-  position:absolute;inset:0;z-index:2;
+  position:absolute;inset:0;z-index:20;
   display:flex;flex-direction:column;
   overflow:hidden;
   background:transparent;
@@ -2246,13 +2244,9 @@ window.AuraApp = AuraApp;
 
   </script>
   <script>
-    if (window.AuraApp) {
-      ReactDOM.createRoot(document.getElementById('root')).render(
-        React.createElement(window.AuraApp)
-      );
-    } else {
-      document.body.innerHTML = '<p style="color:red;padding:20px;font-size:20px">Erreur: AuraApp non trouve</p>';
-    }
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      React.createElement(window.AuraApp)
+    );
   </script>
 </body>
 </html>
