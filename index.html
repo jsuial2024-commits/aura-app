@@ -1274,21 +1274,8 @@ function AuraApp() {
     setAuthLoading(false);
   }
 
-  // Auth check on startup
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (supabase.auth.isLoggedIn()) {
-        setCurrentUser({
-          id: supabase.auth.getUserId()
-        });
-        loadProfiles();
-        setScreen("discover");
-      } else {
-        setScreen("auth");
-      }
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, []);
+  // Auth check on startup - user clicks to proceed
+  // No auto-redirect: user stays on splash and clicks to continue
   useEffect(() => {
     const t = setInterval(() => {
       const next = (bgIdx + 1) % BG_SCENES.length;
@@ -1448,7 +1435,7 @@ function AuraApp() {
       alignItems: "center",
       justifyContent: "center",
       padding: "32px 24px",
-      zIndex: 10
+      zIndex: 30
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1633,10 +1620,10 @@ function AuraApp() {
     className: "splash-divider"
   }), /*#__PURE__*/React.createElement("button", {
     className: "btn-primary",
-    onClick: () => setScreen("app")
+    onClick: () => setScreen("auth")
   }, "Commencer gratuitement \u2726"), /*#__PURE__*/React.createElement("button", {
     className: "btn-ghost",
-    onClick: () => setScreen("app")
+    onClick: () => { setScreen("auth"); setAuthMode("login"); }
   }, "J'ai d\xE9j\xE0 un compte"), /*#__PURE__*/React.createElement("div", {
     className: "splash-footnote"
   }, "2 millions de membres \xB7 150 000 couples form\xE9s"))), screen === "app" && /*#__PURE__*/React.createElement("div", {
