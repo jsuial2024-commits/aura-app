@@ -2560,7 +2560,42 @@ body{
       style: {
         color: "var(--dim)"
       }
-    }, "\u203A"))))), /*#__PURE__*/React.createElement("div", {
+    }, "\u203A")))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "16px 20px 32px"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {}
+        localStorage.removeItem("aura_token");
+        localStorage.removeItem("aura_user_id");
+        setCurrentUser(null);
+        setProfileName("");
+        setProfileAge("");
+        setProfileCity("");
+        setProfileBio("");
+        setProfileJob("");
+        setAvatarUrl(null);
+        setCoverUrl(null);
+        setDbMatches([]);
+        setMsgs(MESSAGES_DATA);
+        setScreen("splash");
+      },
+      style: {
+        width: "100%",
+        padding: "14px",
+        borderRadius: 14,
+        border: "1px solid rgba(232,100,122,0.35)",
+        background: "rgba(232,100,122,0.08)",
+        color: "#E8647A",
+        fontSize: 15,
+        fontWeight: 700,
+        cursor: "pointer",
+        letterSpacing: "0.5px"
+      }
+    }, "\uD83D\uDEAA Se d\xE9connecter"))), /*#__PURE__*/React.createElement("div", {
       className: "bottom-nav"
     }, [{
       id: "discover",
