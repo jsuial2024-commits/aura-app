@@ -22,16 +22,11 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script>
-    var useState = React.useState;
-    var useRef = React.useRef;
-    var useEffect = React.useEffect;
-    var useCallback = React.useCallback;
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
-    }
+    var useState=React.useState; var useRef=React.useRef;
+    var useEffect=React.useEffect; var useCallback=React.useCallback;
+    if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));
   </script>
-  <script>
-(function () {
+  <script>(function () {
   var useState = React.useState;
   var useRef = React.useRef;
   var useEffect = React.useEffect;
@@ -1177,6 +1172,9 @@ body{
     const [avatarUploading, setAvatarUploading] = useState(false);
     const [editingProfile, setEditingProfile] = useState(false);
     const [coverUrl, setCoverUrl] = useState(null);
+    const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
+    const [audioSrcUrl, setAudioSrcUrl] = useState(null);
+    const [showPlayer, setShowPlayer] = useState(null);
     const [profileName, setProfileName] = useState("");
     const [profileAge, setProfileAge] = useState("");
     const [profileCity, setProfileCity] = useState("");
@@ -1221,6 +1219,7 @@ body{
     const mediaChunksRef = useRef([]);
     const audioBlobRef = useRef(null);
     const audioUrlRef = useRef(null);
+    const videoUrlRef = useRef(null);
     const audioElRef = useRef(null);
 
     // Upload avatar to Supabase Storage
@@ -1533,12 +1532,20 @@ body{
           });
           const url = URL.createObjectURL(blob);
           audioBlobRef.current = blob;
-          audioUrlRef.current = url;
+          if (type === "voice") {
+            audioUrlRef.current = url;
+            audioElRef.current = null;
+            setAudioSrcUrl(url);
+          } else {
+            videoUrlRef.current = url;
+            setVideoPreviewUrl(url);
+          }
           const recType = type;
           setRecHas(prev => ({
             ...prev,
             [recType]: true
           }));
+          setShowPlayer(recType);
           showToast(recType === "voice" ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
         };
         mr.start();
@@ -2365,7 +2372,7 @@ body{
       className: "rec-sub"
     }, recHas.voice ? "✓ Enregistré" : "10 secondes")), /*#__PURE__*/React.createElement("div", {
       className: `rec-card ${recHas.video ? "has-rec" : ""}`,
-      onClick: () => startRec("video")
+      onClick: () => recHas.video ? setShowPlayer("video") : startRec("video")
     }, recHas.video && /*#__PURE__*/React.createElement("div", {
       className: "rec-indicator"
     }), /*#__PURE__*/React.createElement("div", {
@@ -2374,7 +2381,7 @@ body{
       className: "rec-lbl"
     }, "Vid\xE9o courte"), /*#__PURE__*/React.createElement("div", {
       className: "rec-sub"
-    }, recHas.video ? "✓ Enregistrée" : "10 secondes")))), /*#__PURE__*/React.createElement("div", {
+    }, recHas.video ? "▶ Visionner" : "10 secondes")))), /*#__PURE__*/React.createElement("div", {
       className: "psection"
     }, /*#__PURE__*/React.createElement("div", {
       className: "psection-title"
@@ -2461,7 +2468,90 @@ body{
       className: "nav-icon"
     }, t.icon), /*#__PURE__*/React.createElement("div", {
       className: "nav-label"
-    }, t.lbl)))), recording && /*#__PURE__*/React.createElement("div", {
+    }, t.lbl)))), showPlayer && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "fixed",
+        inset: 0,
+        zIndex: 300,
+        background: "rgba(10,15,30,0.97)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 36,
+        marginBottom: 16
+      }
+    }, showPlayer === "voice" ? "🎤" : "🎬"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 20,
+        fontWeight: 700,
+        color: "white",
+        marginBottom: 24,
+        fontFamily: "'Cormorant Garamond',serif"
+      }
+    }, showPlayer === "voice" ? "Mon message vocal" : "Ma vidéo"), showPlayer === "voice" && audioUrlRef.current && /*#__PURE__*/React.createElement("audio", {
+      controls: true,
+      src: audioSrcUrl,
+      style: {
+        width: "100%",
+        maxWidth: 320,
+        borderRadius: 12
+      },
+      autoPlay: true
+    }), showPlayer === "video" && videoPreviewUrl && /*#__PURE__*/React.createElement("video", {
+      controls: true,
+      src: videoPreviewUrl,
+      playsInline: true,
+      autoPlay: true,
+      style: {
+        width: "100%",
+        maxWidth: 320,
+        borderRadius: 16,
+        background: "#000",
+        maxHeight: 400
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        marginTop: 28,
+        width: "100%",
+        maxWidth: 320
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const t = showPlayer;
+        setShowPlayer(null);
+        startRec(t);
+      },
+      style: {
+        flex: 1,
+        padding: "12px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.15)",
+        background: "transparent",
+        color: "white",
+        fontSize: 13,
+        cursor: "pointer"
+      }
+    }, "\uD83D\uDD04 Refaire"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowPlayer(null),
+      style: {
+        flex: 2,
+        padding: "12px",
+        borderRadius: 12,
+        border: "none",
+        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        color: "white",
+        fontSize: 14,
+        fontWeight: 700,
+        cursor: "pointer"
+      }
+    }, "\u2713 Garder"))), recording && /*#__PURE__*/React.createElement("div", {
       className: "recording-overlay"
     }, /*#__PURE__*/React.createElement("div", {
       className: "rec-pulse"
@@ -2650,12 +2740,7 @@ body{
     }, toast))));
   }
   window.AuraApp = AuraApp;
-})();
-  </script>
-  <script>
-    ReactDOM.createRoot(document.getElementById('root')).render(
-      React.createElement(window.AuraApp)
-    );
-  </script>
+})();</script>
+  <script>ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(window.AuraApp));</script>
 </body>
 </html>
