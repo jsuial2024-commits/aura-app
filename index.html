@@ -1215,6 +1215,11 @@ body{
     const [playProg, setPlayProg] = useState(0);
     const recTimerRef = useRef(null);
     const playTimerRef = useRef(null);
+    const mediaRecRef = useRef(null);
+    const mediaChunksRef = useRef([]);
+    const audioBlobRef = useRef(null);
+    const audioUrlRef = useRef(null);
+    const audioElRef = useRef(null);
 
     // Upload avatar to Supabase Storage
     async function uploadAvatar(file) {
@@ -1474,33 +1479,84 @@ body{
     };
 
     // ── Recording ──
-    const startRec = type => {
-      setRecording({
-        type,
-        elapsed: 0
-      });
-      let t = 0;
-      recTimerRef.current = setInterval(() => {
-        t += 0.1;
-        setRecording(r => ({
-          ...r,
-          elapsed: Math.min(t, 10)
-        }));
-        if (t >= 10) stopRec(type);
-      }, 100);
+    const startRec = async type => {
+      try {
+        const constraints = type === "voice" ? {
+          audio: true
+        } : {
+          audio: true,
+          video: {
+            facingMode: "user",
+            width: 480,
+            height: 640
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaChunksRef.current = [];
+        const mimeType = type === "voice" ? MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4" : MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : "video/mp4";
+        const mr = new MediaRecorder(stream, {
+          mimeType
+        });
+        mediaRecRef.current = mr;
+        mr.ondataavailable = e => {
+          if (e.data.size > 0) mediaChunksRef.current.push(e.data);
+        };
+        mr.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(mediaChunksRef.current, {
+            type: mimeType
+          });
+          const url = URL.createObjectURL(blob);
+          audioBlobRef.current = blob;
+          audioUrlRef.current = url;
+          const recType = type;
+          setRecHas(prev => ({
+            ...prev,
+            [recType]: true
+          }));
+          showToast(recType === "voice" ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
+        };
+        mr.start();
+        setRecording({
+          type,
+          elapsed: 0
+        });
+        let t = 0;
+        recTimerRef.current = setInterval(() => {
+          t += 0.1;
+          setRecording(r => r ? {
+            ...r,
+            elapsed: Math.min(t, 10)
+          } : null);
+          if (t >= 10) stopRec(type);
+        }, 100);
+      } catch (e) {
+        if (e.name === "NotAllowedError") {
+          showToast("❌ Accès micro/caméra refusé");
+        } else {
+          showToast("❌ Erreur: " + e.message);
+        }
+      }
     };
     const stopRec = type => {
       clearInterval(recTimerRef.current);
+      if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+        mediaRecRef.current.stop();
+      }
       setRecording(null);
-      setRecHas(prev => ({
-        ...prev,
-        [type || recording?.type]: true
-      }));
-      showToast(type === "voice" || recording?.type === "voice" ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
     };
 
-    // ── Voice playback simulation ──
+    // ── Lecture audio réelle ──
     const startPlay = () => {
+      if (!audioUrlRef.current) return;
+      if (!audioElRef.current) {
+        audioElRef.current = new Audio(audioUrlRef.current);
+        audioElRef.current.onended = () => {
+          setPlaying(false);
+          setPlayProg(0);
+        };
+      }
+      audioElRef.current.play();
       setPlaying(true);
       setPlayProg(0);
       let p = 0;
@@ -1515,6 +1571,7 @@ body{
       }, 100);
     };
     const stopPlay = () => {
+      if (audioElRef.current) audioElRef.current.pause();
       clearInterval(playTimerRef.current);
       setPlaying(false);
       setPlayProg(0);
