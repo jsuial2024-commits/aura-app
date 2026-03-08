@@ -1190,6 +1190,7 @@ body{
     const [showMatch, setShowMatch] = useState(false);
     const [matchedProfile, setMatchedProfile] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
+    const [onlineOnly, setOnlineOnly] = useState(false);
     const [mediaPlayer, setMediaPlayer] = useState(null);
     const [openChat, setOpenChat] = useState(null);
     const [msgs, setMsgs] = useState(MESSAGES_DATA);
@@ -1731,9 +1732,10 @@ body{
       setChatInput("");
     };
     const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
-    const cur = profiles[0],
-      nxt = profiles[1],
-      nn = profiles[2];
+    const shownProfiles = onlineOnly ? profiles.filter(p => p.online) : profiles;
+    const cur = shownProfiles[0],
+      nxt = shownProfiles[1],
+      nn = shownProfiles[2];
     const likeOp = Math.max(0, Math.min(1, drag.x / 85));
     const nopeOp = Math.max(0, Math.min(1, -drag.x / 85));
     const cardStyle = drag.on ? {
@@ -2853,11 +2855,54 @@ body{
     }, ["Avec vocal 🎤", "Avec vidéo 🎬", "Avec photo", "Tous"].map(o => /*#__PURE__*/React.createElement("div", {
       key: o,
       className: `foption ${o === "Tous" ? "active" : ""}`
-    }, o))))), /*#__PURE__*/React.createElement("button", {
+    }, o))))), /*#__PURE__*/React.createElement("div", {
+      className: "fgroup"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flabel",
+      style: {
+        marginBottom: 0
+      }
+    }, "En ligne uniquement"), /*#__PURE__*/React.createElement("div", {
+      onClick: () => setOnlineOnly(v => !v),
+      style: {
+        width: 48,
+        height: 26,
+        borderRadius: 13,
+        background: onlineOnly ? "var(--rose)" : "rgba(255,255,255,0.12)",
+        position: "relative",
+        cursor: "pointer",
+        transition: "background .2s",
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        top: 3,
+        left: onlineOnly ? 25 : 3,
+        width: 20,
+        height: 20,
+        borderRadius: "50%",
+        background: "white",
+        transition: "left .2s",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.3)"
+      }
+    }))), onlineOnly && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "var(--muted)",
+        marginTop: 6
+      }
+    }, "\uD83D\uDFE2 Personnes connect\xE9es r\xE9cemment")), /*#__PURE__*/React.createElement("button", {
       className: "filter-apply",
       onClick: () => {
         setShowFilters(false);
-        showToast("✅ Filtres appliqués");
+        showToast(onlineOnly ? "🟢 En ligne uniquement activé" : "✅ Filtres appliqués");
       }
     }, "Appliquer les filtres")), showMatch && matchedProfile && /*#__PURE__*/React.createElement("div", {
       className: "match-popup"
