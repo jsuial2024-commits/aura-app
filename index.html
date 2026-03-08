@@ -1174,6 +1174,12 @@ body{
     const [currentUser, setCurrentUser] = useState(null);
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [avatarUploading, setAvatarUploading] = useState(false);
+    const [editingProfile, setEditingProfile] = useState(false);
+    const [profileName, setProfileName] = useState("");
+    const [profileAge, setProfileAge] = useState("");
+    const [profileCity, setProfileCity] = useState("");
+    const [profileBio, setProfileBio] = useState("");
+    const [profileJob, setProfileJob] = useState("");
     const [dbProfiles, setDbProfiles] = useState([]);
     const [loadingProfiles, setLoadingProfiles] = useState(false);
     const [tab, setTab] = useState("discover");
@@ -1254,6 +1260,24 @@ body{
         console.error("Upload exception:", e.message);
       }
       setAvatarUploading(false);
+    }
+
+    // Save profile info to Supabase
+    async function saveProfile() {
+      if (!currentUser) return;
+      try {
+        await supabase.update("profiles", {
+          name: profileName,
+          age: parseInt(profileAge) || null,
+          city: profileCity,
+          bio: profileBio,
+          job: profileJob
+        }, `id=eq.${currentUser.id}`);
+        showToast("Profil mis à jour ✓");
+        setEditingProfile(false);
+      } catch (e) {
+        showToast("Erreur: " + e.message);
+      }
     }
 
     // BG crossfade cycling
@@ -2044,14 +2068,23 @@ body{
       },
       onChange: e => e.target.files[0] && uploadAvatar(e.target.files[0])
     }))), /*#__PURE__*/React.createElement("button", {
-      className: "edit-btn"
+      className: "edit-btn",
+      onClick: () => setEditingProfile(true)
     }, "\u270F\uFE0F Modifier")), /*#__PURE__*/React.createElement("div", {
       className: "profile-names"
     }, /*#__PURE__*/React.createElement("div", {
       className: "pname"
-    }, "Thomas, 28"), /*#__PURE__*/React.createElement("div", {
+    }, profileName || "Ton prénom", profileAge ? `, ${profileAge}` : ""), /*#__PURE__*/React.createElement("div", {
       className: "ptag2"
-    }, "\uD83D\uDCBC D\xE9veloppeur \xB7 Paris")), /*#__PURE__*/React.createElement("div", {
+    }, profileJob ? `💼 ${profileJob}` : "", profileJob && profileCity ? " · " : "", profileCity || ""), profileBio && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: "var(--muted)",
+        marginTop: 4,
+        padding: "0 16px",
+        textAlign: "center"
+      }
+    }, profileBio)), /*#__PURE__*/React.createElement("div", {
       className: "pstats"
     }, /*#__PURE__*/React.createElement("div", {
       className: "pstat"
@@ -2071,7 +2104,148 @@ body{
       className: "pstat-n"
     }, "94%"), /*#__PURE__*/React.createElement("div", {
       className: "pstat-l"
-    }, "Profil"))), /*#__PURE__*/React.createElement("div", {
+    }, "Profil"))), editingProfile && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        background: "rgba(0,0,0,0.85)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "var(--navy-mid)",
+        borderRadius: 20,
+        padding: "24px",
+        width: "100%",
+        maxWidth: 360,
+        border: "1px solid var(--border)"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: "white",
+        marginBottom: 20,
+        textAlign: "center"
+      }
+    }, "\u270F\uFE0F Mon profil"), [{
+      label: "Prénom",
+      val: profileName,
+      set: setProfileName,
+      placeholder: "Ton prénom"
+    }, {
+      label: "Âge",
+      val: profileAge,
+      set: setProfileAge,
+      placeholder: "25",
+      type: "number"
+    }, {
+      label: "Ville",
+      val: profileCity,
+      set: setProfileCity,
+      placeholder: "Paris"
+    }, {
+      label: "Métier",
+      val: profileJob,
+      set: setProfileJob,
+      placeholder: "Designer, Dev..."
+    }].map(({
+      label,
+      val,
+      set,
+      placeholder,
+      type
+    }) => /*#__PURE__*/React.createElement("div", {
+      key: label,
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "var(--muted)",
+        marginBottom: 4,
+        fontWeight: 600
+      }
+    }, label), /*#__PURE__*/React.createElement("input", {
+      type: type || "text",
+      value: val,
+      onChange: e => set(e.target.value),
+      placeholder: placeholder,
+      style: {
+        width: "100%",
+        padding: "12px 14px",
+        background: "rgba(255,255,255,0.08)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        color: "white",
+        fontSize: 15,
+        outline: "none"
+      }
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "var(--muted)",
+        marginBottom: 4,
+        fontWeight: 600
+      }
+    }, "Bio"), /*#__PURE__*/React.createElement("textarea", {
+      value: profileBio,
+      onChange: e => setProfileBio(e.target.value),
+      placeholder: "Dis quelque chose sur toi...",
+      rows: 3,
+      style: {
+        width: "100%",
+        padding: "12px 14px",
+        background: "rgba(255,255,255,0.08)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        color: "white",
+        fontSize: 15,
+        outline: "none",
+        resize: "none"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10,
+        marginTop: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditingProfile(false),
+      style: {
+        flex: 1,
+        padding: "12px",
+        borderRadius: 12,
+        border: "1px solid var(--border)",
+        background: "transparent",
+        color: "var(--muted)",
+        fontSize: 14,
+        cursor: "pointer"
+      }
+    }, "Annuler"), /*#__PURE__*/React.createElement("button", {
+      onClick: saveProfile,
+      style: {
+        flex: 2,
+        padding: "12px",
+        borderRadius: 12,
+        border: "none",
+        background: "linear-gradient(135deg,var(--rose),var(--amber))",
+        color: "white",
+        fontSize: 14,
+        fontWeight: 700,
+        cursor: "pointer"
+      }
+    }, "Enregistrer")))), /*#__PURE__*/React.createElement("div", {
       className: "rec-section"
     }, /*#__PURE__*/React.createElement("div", {
       className: "rec-title"
