@@ -10,13 +10,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Aura"/>
   <link rel="apple-touch-icon" href="/icon-192.png"/>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
-      });
-    }
-  </script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body { width:100%; height:100vh; height:100dvh; background:#0a0a0a; overflow:hidden; }
@@ -32,232 +25,241 @@
     var useRef = React.useRef;
     var useEffect = React.useEffect;
     var useCallback = React.useCallback;
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    }
   </script>
   <script>
-// ─── SUPABASE CLIENT ─────────────────────────────────────────────────
-const SUPABASE_URL = "https://izbclyrionmfcjdidnuo.supabase.co";
-const SUPABASE_KEY = "sb_publishable_WiPfn8gk6OfdVL_2SxbhDg_tEEQpo06";
+(function () {
+  var useState = React.useState;
+  var useRef = React.useRef;
+  var useEffect = React.useEffect;
+  var useCallback = React.useCallback;
 
-// Client Supabase léger (sans npm, fetch natif)
-const supabase = {
-  _url: SUPABASE_URL,
-  _key: SUPABASE_KEY,
-  _headers: {
-    "apikey": SUPABASE_KEY,
-    "Authorization": `Bearer ${SUPABASE_KEY}`,
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
-  },
-  // Auth
-  auth: {
-    async signUp({
-      email,
-      password,
-      options
-    }) {
-      try {
-        const r = await fetch(SUPABASE_URL + "/auth/v1/signup", {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email,
-            password,
-            data: options?.data || {}
-          })
-        });
-        const data = await r.json();
-        console.log("signUp response:", JSON.stringify(data));
-        return data;
-      } catch (e) {
-        console.error("signUp error:", e);
-        return {
-          error: {
-            message: e.message
-          }
-        };
-      }
+  // ─── SUPABASE CLIENT ─────────────────────────────────────────────────
+  const SUPABASE_URL = "https://izbclyrionmfcjdidnuo.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_WiPfn8gk6OfdVL_2SxbhDg_tEEQpo06";
+
+  // Client Supabase léger (sans npm, fetch natif)
+  const supabase = {
+    _url: SUPABASE_URL,
+    _key: SUPABASE_KEY,
+    _headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
     },
-    async signIn({
-      email,
-      password
-    }) {
-      try {
-        const r = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email,
-            password
-          })
-        });
-        const data = await r.json();
-        console.log("signIn response:", JSON.stringify(data));
-        if (data.access_token) {
-          localStorage.setItem("aura_token", data.access_token);
-          localStorage.setItem("aura_user_id", data.user?.id);
+    // Auth
+    auth: {
+      async signUp({
+        email,
+        password,
+        options
+      }) {
+        try {
+          const r = await fetch(SUPABASE_URL + "/auth/v1/signup", {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              email,
+              password,
+              data: options?.data || {}
+            })
+          });
+          const data = await r.json();
+          console.log("signUp response:", JSON.stringify(data));
+          return data;
+        } catch (e) {
+          console.error("signUp error:", e);
+          return {
+            error: {
+              message: e.message
+            }
+          };
         }
-        return data;
-      } catch (e) {
-        console.error("signIn error:", e);
-        return {
-          error: {
-            message: e.message
+      },
+      async signIn({
+        email,
+        password
+      }) {
+        try {
+          const r = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              email,
+              password
+            })
+          });
+          const data = await r.json();
+          console.log("signIn response:", JSON.stringify(data));
+          if (data.access_token) {
+            localStorage.setItem("aura_token", data.access_token);
+            localStorage.setItem("aura_user_id", data.user?.id);
           }
-        };
+          return data;
+        } catch (e) {
+          console.error("signIn error:", e);
+          return {
+            error: {
+              message: e.message
+            }
+          };
+        }
+      },
+      async signOut() {
+        const token = localStorage.getItem("aura_token");
+        await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        localStorage.removeItem("aura_token");
+        localStorage.removeItem("aura_user_id");
+      },
+      getToken() {
+        return localStorage.getItem("aura_token");
+      },
+      getUserId() {
+        return localStorage.getItem("aura_user_id");
+      },
+      isLoggedIn() {
+        return !!localStorage.getItem("aura_token");
       }
     },
-    async signOut() {
-      const token = localStorage.getItem("aura_token");
-      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
-        method: "POST",
+    // Database helpers
+    async select(table, query = "") {
+      const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
         headers: {
-          "apikey": SUPABASE_KEY,
+          ...this._headers,
           "Authorization": `Bearer ${token}`
         }
       });
-      localStorage.removeItem("aura_token");
-      localStorage.removeItem("aura_user_id");
+      return r.json();
     },
-    getToken() {
-      return localStorage.getItem("aura_token");
+    async insert(table, data) {
+      const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: "POST",
+        headers: {
+          ...this._headers,
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      return r.json();
     },
-    getUserId() {
-      return localStorage.getItem("aura_user_id");
+    async update(table, data, query) {
+      const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+        method: "PATCH",
+        headers: {
+          ...this._headers,
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      return r.json();
     },
-    isLoggedIn() {
-      return !!localStorage.getItem("aura_token");
+    // Realtime (polling simplifié)
+    subscribe(table, callback, intervalMs = 3000) {
+      const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+      let lastId = null;
+      const id = setInterval(async () => {
+        const query = lastId ? `?id=gt.${lastId}&order=id` : `?order=created_at.desc&limit=1`;
+        const data = await this.select(table, query);
+        if (Array.isArray(data) && data.length > 0) {
+          if (lastId) callback(data);
+          lastId = data[0]?.id || lastId;
+        }
+      }, intervalMs);
+      return () => clearInterval(id);
     }
-  },
-  // Database helpers
-  async select(table, query = "") {
-    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
-      headers: {
-        ...this._headers,
-        "Authorization": `Bearer ${token}`
-      }
-    });
-    return r.json();
-  },
-  async insert(table, data) {
-    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method: "POST",
-      headers: {
-        ...this._headers,
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify(data)
-    });
-    return r.json();
-  },
-  async update(table, data, query) {
-    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
-      method: "PATCH",
-      headers: {
-        ...this._headers,
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify(data)
-    });
-    return r.json();
-  },
-  // Realtime (polling simplifié)
-  subscribe(table, callback, intervalMs = 3000) {
-    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
-    let lastId = null;
-    const id = setInterval(async () => {
-      const query = lastId ? `?id=gt.${lastId}&order=id` : `?order=created_at.desc&limit=1`;
-      const data = await this.select(table, query);
-      if (Array.isArray(data) && data.length > 0) {
-        if (lastId) callback(data);
-        lastId = data[0]?.id || lastId;
-      }
-    }, intervalMs);
-    return () => clearInterval(id);
+  };
+
+  // ─── SCÈNES CANVAS PHOTO-RÉALISTES ──────────────────────────────────
+  // Chaque scène est dessinée sur un Canvas avec grain photographique,
+  // couches de lumière et textures — rendu natif navigateur, zéro dépendance.
+
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
   }
-};
 
-// ─── SCÈNES CANVAS PHOTO-RÉALISTES ──────────────────────────────────
-// Chaque scène est dessinée sur un Canvas avec grain photographique,
-// couches de lumière et textures — rendu natif navigateur, zéro dépendance.
-
-function rr(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
-}
-
-// ─── FONDS — dégradés CSS atmosphériques (floutés = photo réelle) ───
-const BG_SCENES = [
-// 1. Chambre — lumière ambre chaude de lampes de chevet
-`radial-gradient(ellipse 80% 60% at 8% 50%, #ffcf6e 0%, #e8801a 18%, #a03808 40%, #3a1204 65%, #180800 100%),
+  // ─── FONDS — dégradés CSS atmosphériques (floutés = photo réelle) ───
+  const BG_SCENES = [
+  // 1. Chambre — lumière ambre chaude de lampes de chevet
+  `radial-gradient(ellipse 80% 60% at 8% 50%, #ffcf6e 0%, #e8801a 18%, #a03808 40%, #3a1204 65%, #180800 100%),
    radial-gradient(ellipse 80% 60% at 92% 50%, #ffcf6e 0%, #e8801a 18%, #a03808 40%, #3a1204 65%, #180800 100%),
    radial-gradient(ellipse 55% 35% at 50% 62%, #f5eacc 0%, #d4b87a 25%, #6a3010 55%, transparent 80%),
    radial-gradient(ellipse 40% 28% at 50% 14%, #c8d8ff 0%, #6080c0 30%, transparent 70%),
    linear-gradient(180deg, #120800 0%, #2a1208 35%, #1e0e06 65%, #3d2010 85%, #1a0a04 100%)`,
-// 2. Salon cheminée — feu orange vif, velours profond
-`radial-gradient(ellipse 55% 70% at 50% 68%, #fff5a0 0%, #ffcc30 8%, #ff8c0a 20%, #e04a05 38%, #801802 58%, #300800 80%, transparent 100%),
+  // 2. Salon cheminée — feu orange vif, velours profond
+  `radial-gradient(ellipse 55% 70% at 50% 68%, #fff5a0 0%, #ffcc30 8%, #ff8c0a 20%, #e04a05 38%, #801802 58%, #300800 80%, transparent 100%),
    radial-gradient(ellipse 90% 55% at 50% 72%, #ff7008 0%, #cc3a04 25%, #701002 50%, transparent 75%),
    radial-gradient(ellipse 35% 22% at 88% 30%, #ffd878 0%, #e09020 30%, transparent 70%),
    linear-gradient(180deg, #080300 0%, #160902 30%, #0e0601 55%, #3a1e08 75%, #1a0c04 100%)`,
-// 3. Bar whisky — spots dorés, bois mahogany sombre
-`radial-gradient(ellipse 50% 65% at 18% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
+  // 3. Bar whisky — spots dorés, bois mahogany sombre
+  `radial-gradient(ellipse 50% 65% at 18% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
    radial-gradient(ellipse 50% 65% at 50% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
    radial-gradient(ellipse 50% 65% at 82% 0%, #ffd060 0%, #e09020 15%, #a05010 32%, #501a04 52%, transparent 75%),
    radial-gradient(ellipse 70% 40% at 50% 72%, #8a5020 0%, #5a3010 30%, #2a1406 60%, transparent 85%),
    linear-gradient(180deg, #050301 0%, #100702 22%, #180e04 45%, #4a2e0e 68%, #2e1a08 85%, #120904 100%)`,
-// 4. Restaurant — bougies, nappes blanches, lustre doré
-`radial-gradient(ellipse 60% 40% at 50% 0%, #ffeaa0 0%, #ffcc50 12%, #e09018 28%, #805010 48%, transparent 70%),
+  // 4. Restaurant — bougies, nappes blanches, lustre doré
+  `radial-gradient(ellipse 60% 40% at 50% 0%, #ffeaa0 0%, #ffcc50 12%, #e09018 28%, #805010 48%, transparent 70%),
    radial-gradient(ellipse 55% 55% at 50% 65%, #fff8e8 0%, #ffecc0 12%, #e8c060 28%, #c08020 45%, #703808 62%, transparent 80%),
    radial-gradient(ellipse 25% 20% at 20% 55%, #fff0c0 0%, #f0d070 20%, #c09030 45%, transparent 70%),
    radial-gradient(ellipse 25% 20% at 80% 53%, #fff0c0 0%, #f0d070 20%, #c09030 45%, transparent 70%),
    linear-gradient(180deg, #060402 0%, #120a04 28%, #1c1006 50%, #0e0804 75%, #080502 100%)`,
-// 5. Plage nuit — lune sur mer turquoise, sable chaud
-`radial-gradient(ellipse 45% 35% at 72% 16%, #fffce8 0%, #f0e8b0 10%, #c8d8ff 25%, #6090d0 45%, transparent 70%),
+  // 5. Plage nuit — lune sur mer turquoise, sable chaud
+  `radial-gradient(ellipse 45% 35% at 72% 16%, #fffce8 0%, #f0e8b0 10%, #c8d8ff 25%, #6090d0 45%, transparent 70%),
    radial-gradient(ellipse 65% 30% at 65% 44%, #e8f8ff 0%, #a8d8f0 15%, #4898c8 35%, transparent 60%),
    linear-gradient(180deg, #02040e 0%, #06101e 15%, #0a1e40 30%, #0e3060 45%, #1a78a0 57%, #1e8aaa 63%, #d8bc78 65%, #c8a85e 72%, #a88040 85%, #7a5a28 100%)`,
-// 6. Coucher de soleil — ciel dramatique, silhouettes sombres
-`radial-gradient(ellipse 55% 55% at 50% 55%, #fffcd0 0%, #ffe860 6%, #ffb820 14%, #f06010 25%, #c02818 38%, transparent 65%),
+  // 6. Coucher de soleil — ciel dramatique, silhouettes sombres
+  `radial-gradient(ellipse 55% 55% at 50% 55%, #fffcd0 0%, #ffe860 6%, #ffb820 14%, #f06010 25%, #c02818 38%, transparent 65%),
    radial-gradient(ellipse 90% 70% at 50% 52%, #ff8010 0%, #e04808 18%, #901808 38%, #4a0808 58%, transparent 80%),
    radial-gradient(ellipse 40% 30% at 18% 22%, #5a0a4a 0%, #380630 40%, transparent 75%),
    radial-gradient(ellipse 40% 30% at 82% 20%, #5a0a4a 0%, #380630 40%, transparent 75%),
    linear-gradient(180deg, #040110 0%, #0e0420 12%, #28062a 24%, #5a0e20 36%, #c02810 48%, #e86010 58%, #f5a020 67%, #fdd040 74%, #050202 76%, #020101 100%)`];
 
-// ─── Composant fond CSS (ultra simple, toujours visible) ──────────────
-function SceneBg({
-  sceneIndex,
-  opacity = 1,
-  transition = ""
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      inset: 0,
-      background: BG_SCENES[sceneIndex % BG_SCENES.length],
-      backgroundSize: "cover",
-      filter: "blur(8px) saturate(1.3) brightness(0.9)",
-      opacity,
-      transition
-    }
-  });
-}
-const css = `
+  // ─── Composant fond CSS (ultra simple, toujours visible) ──────────────
+  function SceneBg({
+    sceneIndex,
+    opacity = 1,
+    transition = ""
+  }) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        inset: 0,
+        background: BG_SCENES[sceneIndex % BG_SCENES.length],
+        backgroundSize: "cover",
+        filter: "blur(8px) saturate(1.3) brightness(0.9)",
+        opacity,
+        transition
+      }
+    });
+  }
+  const css = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -330,7 +332,6 @@ body{
   display:flex;flex-direction:column;
   overflow:hidden;
   background:transparent;
-  color:white;
 }
 
 /* ── STATUS BAR ── */
@@ -1028,1240 +1029,1314 @@ body{
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 `;
 
-// ─── PROFILS ────────────────────────────────────────────────────────
-const PROFILES = [{
-  id: 1,
-  name: "Léa",
-  age: 27,
-  job: "Designer UX",
-  city: "Paris",
-  bio: "Passionnée d'art contemporain et de randonnée. Je cherche quelqu'un qui aime autant les musées que les sommets.",
-  distance: "2 km",
-  interests: ["Art", "Randonnée", "Photo", "Yoga"],
-  verified: true,
-  premium: false,
-  match: 94,
-  hasVoice: true,
-  hasVideo: true,
-  photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80"
-}, {
-  id: 2,
-  name: "Sofia",
-  age: 25,
-  job: "Chef cuisinière",
-  city: "Lyon",
-  bio: "La vie est trop courte pour manger sans plaisir. J'adore cuisiner et explorer de nouvelles cultures.",
-  distance: "5 km",
-  interests: ["Cuisine", "Voyage", "Musique", "Cinéma"],
-  verified: true,
-  premium: true,
-  match: 88,
-  hasVoice: true,
-  hasVideo: false,
-  photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80"
-}, {
-  id: 3,
-  name: "Camille",
-  age: 29,
-  job: "Architecte",
-  city: "Bordeaux",
-  bio: "Je construis des espaces le jour et des rêves la nuit. Amatrice de jazz et de café bien trop fort.",
-  distance: "8 km",
-  interests: ["Architecture", "Jazz", "Lecture", "Running"],
-  verified: false,
-  premium: true,
-  match: 79,
-  hasVoice: false,
-  hasVideo: true,
-  photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&q=80"
-}, {
-  id: 4,
-  name: "Emma",
-  age: 26,
-  job: "Journaliste",
-  city: "Paris",
-  bio: "Toujours curieuse, jamais satisfaite. Je cherche quelqu'un pour débattre jusqu'à 2h du matin.",
-  distance: "3 km",
-  interests: ["Écriture", "Débats", "Théâtre", "Voyages"],
-  verified: true,
-  premium: false,
-  match: 91,
-  hasVoice: true,
-  hasVideo: true,
-  photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80"
-}];
+  // ─── PROFILS ────────────────────────────────────────────────────────
+  const PROFILES = [{
+    id: 1,
+    name: "Léa",
+    age: 27,
+    job: "Designer UX",
+    city: "Paris",
+    bio: "Passionnée d'art contemporain et de randonnée. Je cherche quelqu'un qui aime autant les musées que les sommets.",
+    distance: "2 km",
+    interests: ["Art", "Randonnée", "Photo", "Yoga"],
+    verified: true,
+    premium: false,
+    match: 94,
+    hasVoice: true,
+    hasVideo: true,
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80"
+  }, {
+    id: 2,
+    name: "Sofia",
+    age: 25,
+    job: "Chef cuisinière",
+    city: "Lyon",
+    bio: "La vie est trop courte pour manger sans plaisir. J'adore cuisiner et explorer de nouvelles cultures.",
+    distance: "5 km",
+    interests: ["Cuisine", "Voyage", "Musique", "Cinéma"],
+    verified: true,
+    premium: true,
+    match: 88,
+    hasVoice: true,
+    hasVideo: false,
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80"
+  }, {
+    id: 3,
+    name: "Camille",
+    age: 29,
+    job: "Architecte",
+    city: "Bordeaux",
+    bio: "Je construis des espaces le jour et des rêves la nuit. Amatrice de jazz et de café bien trop fort.",
+    distance: "8 km",
+    interests: ["Architecture", "Jazz", "Lecture", "Running"],
+    verified: false,
+    premium: true,
+    match: 79,
+    hasVoice: false,
+    hasVideo: true,
+    photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&q=80"
+  }, {
+    id: 4,
+    name: "Emma",
+    age: 26,
+    job: "Journaliste",
+    city: "Paris",
+    bio: "Toujours curieuse, jamais satisfaite. Je cherche quelqu'un pour débattre jusqu'à 2h du matin.",
+    distance: "3 km",
+    interests: ["Écriture", "Débats", "Théâtre", "Voyages"],
+    verified: true,
+    premium: false,
+    match: 91,
+    hasVoice: true,
+    hasVideo: true,
+    photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80"
+  }];
 
-// ─── CONVERSATIONS ───────────────────────────────────────────────────
-const MESSAGES_DATA = [{
-  id: 1,
-  name: "Léa",
-  photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80",
-  online: true,
-  lastMsg: "Haha oui exactement ! Tu connais cet endroit ?",
-  time: "2 min",
-  unread: 2,
-  chat: [{
-    from: "them",
-    text: "Salut ! J'ai vu que tu aimais la randonnée 🏔️",
-    time: "14:20"
+  // ─── CONVERSATIONS ───────────────────────────────────────────────────
+  const MESSAGES_DATA = [{
+    id: 1,
+    name: "Léa",
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80",
+    online: true,
+    lastMsg: "Haha oui exactement ! Tu connais cet endroit ?",
+    time: "2 min",
+    unread: 2,
+    chat: [{
+      from: "them",
+      text: "Salut ! J'ai vu que tu aimais la randonnée 🏔️",
+      time: "14:20"
+    }, {
+      from: "me",
+      text: "Oui ! Je fais souvent des sorties dans les Alpes",
+      time: "14:22"
+    }, {
+      from: "them",
+      text: "Le mont Blanc l'été dernier c'était incroyable ✨",
+      time: "14:23"
+    }, {
+      from: "me",
+      text: "Moi j'ai fait la Mer de Glace en juin",
+      time: "14:25"
+    }, {
+      from: "them",
+      text: "Haha oui exactement ! Tu connais cet endroit ?",
+      time: "14:27"
+    }]
   }, {
-    from: "me",
-    text: "Oui ! Je fais souvent des sorties dans les Alpes",
-    time: "14:22"
+    id: 2,
+    name: "Emma",
+    photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80",
+    online: true,
+    lastMsg: "Super ! On se retrouve samedi alors ?",
+    time: "1h",
+    unread: 0,
+    chat: [{
+      from: "them",
+      text: "Hey ! Tu as vu le dernier film de Villeneuve ?",
+      time: "11:00"
+    }, {
+      from: "me",
+      text: "Non pas encore, il est bien ?",
+      time: "11:05"
+    }, {
+      from: "them",
+      text: "Absolument brillant. On pourrait le voir ensemble ?",
+      time: "11:06"
+    }, {
+      from: "them",
+      text: "Super ! On se retrouve samedi alors ?",
+      time: "11:11"
+    }]
   }, {
-    from: "them",
-    text: "Le mont Blanc l'été dernier c'était incroyable ✨",
-    time: "14:23"
-  }, {
-    from: "me",
-    text: "Moi j'ai fait la Mer de Glace en juin",
-    time: "14:25"
-  }, {
-    from: "them",
-    text: "Haha oui exactement ! Tu connais cet endroit ?",
-    time: "14:27"
-  }]
-}, {
-  id: 2,
-  name: "Emma",
-  photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80",
-  online: true,
-  lastMsg: "Super ! On se retrouve samedi alors ?",
-  time: "1h",
-  unread: 0,
-  chat: [{
-    from: "them",
-    text: "Hey ! Tu as vu le dernier film de Villeneuve ?",
-    time: "11:00"
-  }, {
-    from: "me",
-    text: "Non pas encore, il est bien ?",
-    time: "11:05"
-  }, {
-    from: "them",
-    text: "Absolument brillant. On pourrait le voir ensemble ?",
-    time: "11:06"
-  }, {
-    from: "them",
-    text: "Super ! On se retrouve samedi alors ?",
-    time: "11:11"
-  }]
-}, {
-  id: 3,
-  name: "Sofia",
-  photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80",
-  online: false,
-  lastMsg: "Je t'enverrai la recette 😄",
-  time: "3h",
-  unread: 0,
-  chat: [{
-    from: "them",
-    text: "Je t'enverrai la recette 😄",
-    time: "09:05"
-  }]
-}];
+    id: 3,
+    name: "Sofia",
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80",
+    online: false,
+    lastMsg: "Je t'enverrai la recette 😄",
+    time: "3h",
+    unread: 0,
+    chat: [{
+      from: "them",
+      text: "Je t'enverrai la recette 😄",
+      time: "09:05"
+    }]
+  }];
 
-// ─── COMPOSANT PRINCIPAL ────────────────────────────────────────────
-function AuraApp() {
-  const [screen, setScreen] = useState("splash");
-  const [authMode, setAuthMode] = useState("login"); // "login" | "register"
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authName, setAuthName] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
-  const [dbProfiles, setDbProfiles] = useState([]);
-  const [loadingProfiles, setLoadingProfiles] = useState(false);
-  const [tab, setTab] = useState("discover");
-  const [profiles, setProfiles] = useState(PROFILES);
-  const [bgIdx, setBgIdx] = useState(0);
-  const [bgNext, setBgNext] = useState(1);
-  const [bgCrossfade, setBgCrossfade] = useState(false);
-  const [showMatch, setShowMatch] = useState(false);
-  const [matchedProfile, setMatchedProfile] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [mediaPlayer, setMediaPlayer] = useState(null);
-  const [openChat, setOpenChat] = useState(null);
-  const [msgs, setMsgs] = useState(MESSAGES_DATA);
-  const [chatInput, setChatInput] = useState("");
-  const [toast, setToast] = useState(null);
-  const [genderF, setGenderF] = useState("Femmes");
-  const [ageF, setAgeF] = useState(35);
-  const [distF, setDistF] = useState(25);
-  const [intF, setIntF] = useState(["Musique", "Voyage"]);
-  const [drag, setDrag] = useState({
-    on: false,
-    x: 0,
-    y: 0,
-    sx: 0,
-    sy: 0
-  });
-  const [recording, setRecording] = useState(null);
-  const [recHas, setRecHas] = useState({
-    voice: false,
-    video: false
-  });
-  const [playing, setPlaying] = useState(false);
-  const [playProg, setPlayProg] = useState(0);
-  const recTimerRef = useRef(null);
-  const playTimerRef = useRef(null);
-
-  // BG crossfade cycling
-  async function loadProfiles() {
-    try {
-      const userId = supabase.auth.getUserId();
-      const data = await supabase.select("profiles", "?id=neq." + userId + "&limit=20&order=created_at.desc");
-      if (Array.isArray(data) && data.length > 0) {
-        setDbProfiles(data.map(p => ({
-          id: p.id,
-          name: p.name || "Membre",
-          age: p.age || 25,
-          job: p.job || "AURA",
-          city: p.city || "Paris",
-          bio: p.bio || "Nouveau sur AURA",
-          distance: "? km",
-          interests: p.interests || ["Voyages"],
-          verified: p.verified || false,
-          premium: p.premium || false,
-          match: Math.floor(75 + Math.random() * 24),
-          hasVoice: !!p.voice_url,
-          hasVideo: !!p.video_url,
-          photo: p.photo_url || null
-        })));
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  }
-  async function handleAuth() {
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      if (authMode === "register") {
-        const res = await supabase.auth.signUp({
-          email: authEmail,
-          password: authPassword,
-          options: {
-            data: {
-              name: authName
-            }
-          }
-        });
-        if (res.error) {
-          setAuthError(res.error.message || res.msg || JSON.stringify(res.error));
-        } else {
-          const login = await supabase.auth.signIn({
-            email: authEmail,
-            password: authPassword
-          });
-          if (login.access_token) {
-            setCurrentUser({
-              id: login.user?.id
-            });
-            await loadProfiles();
-            setScreen("app");
-          } else {
-            setAuthError("Compte cree ! Connecte-toi.");
-            setAuthMode("login");
-          }
-        }
-      } else {
-        const res = await supabase.auth.signIn({
-          email: authEmail,
-          password: authPassword
-        });
-        if (res.access_token) {
-          setCurrentUser({
-            id: res.user?.id
-          });
-          await loadProfiles();
-          setScreen("app");
-        } else {
-          setAuthError(res.error?.message || res.error_description || res.msg || "Email ou mot de passe incorrect. Verifie tes identifiants.");
-        }
-      }
-    } catch (e) {
-      console.error("handleAuth error:", e);
-      setAuthError("Erreur: " + e.message);
-    }
-    setAuthLoading(false);
-  }
-
-  // Auth check on startup
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (supabase.auth.isLoggedIn()) {
-        setCurrentUser({
-          id: supabase.auth.getUserId()
-        });
-        loadProfiles();
-        setScreen("app");
-      } else {
-        setScreen("auth");
-      }
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    const t = setInterval(() => {
-      const next = (bgIdx + 1) % BG_SCENES.length;
-      setBgNext(next);
-      setBgCrossfade(true);
-      setTimeout(() => {
-        setBgIdx(next);
-        setBgCrossfade(false);
-      }, 1400);
-    }, 7000);
-    return () => clearInterval(t);
-  }, [bgIdx]);
-  const showToast = msg => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2200);
-  };
-
-  // ── Swipe ──
-  const onMD = e => setDrag({
-    on: true,
-    x: 0,
-    y: 0,
-    sx: e.clientX,
-    sy: e.clientY
-  });
-  const onMM = e => {
-    if (!drag.on) return;
-    setDrag(d => ({
-      ...d,
-      x: e.clientX - d.sx,
-      y: e.clientY - d.sy
-    }));
-  };
-  const onMU = () => {
-    if (!drag.on) return;
-    if (drag.x > 85) doLike();else if (drag.x < -85) doPass();
-    setDrag({
+  // ─── COMPOSANT PRINCIPAL ────────────────────────────────────────────
+  function AuraApp() {
+    const [screen, setScreen] = useState("splash");
+    const [authMode, setAuthMode] = useState("login"); // "login" | "register"
+    const [authEmail, setAuthEmail] = useState("");
+    const [authPassword, setAuthPassword] = useState("");
+    const [authName, setAuthName] = useState("");
+    const [authLoading, setAuthLoading] = useState(false);
+    const [authError, setAuthError] = useState("");
+    const [currentUser, setCurrentUser] = useState(null);
+    const [avatarUrl, setAvatarUrl] = useState(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+    const [dbProfiles, setDbProfiles] = useState([]);
+    const [loadingProfiles, setLoadingProfiles] = useState(false);
+    const [tab, setTab] = useState("discover");
+    const [profiles, setProfiles] = useState(PROFILES);
+    const [bgIdx, setBgIdx] = useState(0);
+    const [bgNext, setBgNext] = useState(1);
+    const [bgCrossfade, setBgCrossfade] = useState(false);
+    const [showMatch, setShowMatch] = useState(false);
+    const [matchedProfile, setMatchedProfile] = useState(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [mediaPlayer, setMediaPlayer] = useState(null);
+    const [openChat, setOpenChat] = useState(null);
+    const [msgs, setMsgs] = useState(MESSAGES_DATA);
+    const [chatInput, setChatInput] = useState("");
+    const [toast, setToast] = useState(null);
+    const [genderF, setGenderF] = useState("Femmes");
+    const [ageF, setAgeF] = useState(35);
+    const [distF, setDistF] = useState(25);
+    const [intF, setIntF] = useState(["Musique", "Voyage"]);
+    const [drag, setDrag] = useState({
       on: false,
       x: 0,
       y: 0,
       sx: 0,
       sy: 0
     });
-  };
-  const doLike = () => {
-    if (!profiles.length) return;
-    const p = profiles[0];
-    if (Math.random() > 0.38) {
-      setMatchedProfile(p);
-      setShowMatch(true);
-    } else showToast("💛 Tu as liké " + p.name);
-    setProfiles(prev => prev.slice(1));
-    setBgIdx(i => (i + 1) % BG_SCENES.length);
-  };
-  const doPass = () => {
-    if (!profiles.length) return;
-    setProfiles(prev => prev.slice(1));
-    setBgIdx(i => (i + 1) % BG_SCENES.length);
-    showToast("👋 Profil passé");
-  };
-  const doUndo = () => {
-    setProfiles(PROFILES);
-    showToast("↩ Retour au début");
-  };
-
-  // ── Recording ──
-  const startRec = type => {
-    setRecording({
-      type,
-      elapsed: 0
+    const [recording, setRecording] = useState(null);
+    const [recHas, setRecHas] = useState({
+      voice: false,
+      video: false
     });
-    let t = 0;
-    recTimerRef.current = setInterval(() => {
-      t += 0.1;
-      setRecording(r => ({
-        ...r,
-        elapsed: Math.min(t, 10)
-      }));
-      if (t >= 10) stopRec(type);
-    }, 100);
-  };
-  const stopRec = type => {
-    clearInterval(recTimerRef.current);
-    setRecording(null);
-    setRecHas(prev => ({
-      ...prev,
-      [type || recording?.type]: true
-    }));
-    showToast(type === "voice" || recording?.type === "voice" ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
-  };
+    const [playing, setPlaying] = useState(false);
+    const [playProg, setPlayProg] = useState(0);
+    const recTimerRef = useRef(null);
+    const playTimerRef = useRef(null);
 
-  // ── Voice playback simulation ──
-  const startPlay = () => {
-    setPlaying(true);
-    setPlayProg(0);
-    let p = 0;
-    playTimerRef.current = setInterval(() => {
-      p += 1;
-      setPlayProg(p);
-      if (p >= 100) {
-        clearInterval(playTimerRef.current);
-        setPlaying(false);
-        setPlayProg(0);
+    // Upload avatar to Supabase Storage
+    async function uploadAvatar(file) {
+      if (!file || !currentUser) return;
+      setAvatarUploading(true);
+      try {
+        const token = localStorage.getItem("aura_token");
+        const ext = file.name.split(".").pop();
+        const path = `${currentUser.id}/avatar.${ext}`;
+        const formData = new FormData();
+        formData.append("", file);
+        // Upload to Supabase Storage
+        const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${token}`,
+            "x-upsert": "true"
+          },
+          body: formData
+        });
+        if (r.ok) {
+          const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+          setAvatarUrl(url);
+          // Save URL to profile
+          await supabase.update("profiles", {
+            avatar_url: url
+          }, `id=eq.${currentUser.id}`);
+          showToast("Photo mise à jour ✓");
+        } else {
+          showToast("Erreur upload");
+        }
+      } catch (e) {
+        showToast("Erreur: " + e.message);
       }
-    }, 100);
-  };
-  const stopPlay = () => {
-    clearInterval(playTimerRef.current);
-    setPlaying(false);
-    setPlayProg(0);
-  };
+      setAvatarUploading(false);
+    }
 
-  // ── Chat ──
-  const sendMsg = () => {
-    if (!chatInput.trim() || !openChat) return;
-    setMsgs(prev => prev.map(c => c.id === openChat.id ? {
-      ...c,
-      chat: [...c.chat, {
-        from: "me",
-        text: chatInput,
-        time: "Maintenant"
-      }],
-      lastMsg: chatInput,
-      unread: 0
-    } : c));
-    setChatInput("");
-  };
-  const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
-  const cur = profiles[0],
-    nxt = profiles[1],
-    nn = profiles[2];
-  const likeOp = Math.max(0, Math.min(1, drag.x / 85));
-  const nopeOp = Math.max(0, Math.min(1, -drag.x / 85));
-  const cardStyle = drag.on ? {
-    transform: `translate(${drag.x}px,${drag.y}px) rotate(${drag.x * 0.07}deg)`,
-    transition: "none"
-  } : {};
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("style", null, css), /*#__PURE__*/React.createElement("div", {
-    className: "shell"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-wrap"
-  }, /*#__PURE__*/React.createElement(SceneBg, {
-    sceneIndex: bgIdx,
-    opacity: 1
-  }), /*#__PURE__*/React.createElement(SceneBg, {
-    sceneIndex: bgNext,
-    opacity: bgCrossfade ? 1 : 0,
-    transition: "opacity 1.8s ease"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "bg-overlay"
-  })), screen === "auth" && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      inset: 0,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "32px 24px",
-      zIndex: 50,
-      background: "rgba(8,12,28,0.85)"
+    // BG crossfade cycling
+    async function loadProfiles() {
+      try {
+        const userId = supabase.auth.getUserId();
+        const data = await supabase.select("profiles", "?id=neq." + userId + "&limit=20&order=created_at.desc");
+        if (Array.isArray(data) && data.length > 0) {
+          setDbProfiles(data.map(p => ({
+            id: p.id,
+            name: p.name || "Membre",
+            age: p.age || 25,
+            job: p.job || "AURA",
+            city: p.city || "Paris",
+            bio: p.bio || "Nouveau sur AURA",
+            distance: "? km",
+            interests: p.interests || ["Voyages"],
+            verified: p.verified || false,
+            premium: p.premium || false,
+            match: Math.floor(75 + Math.random() * 24),
+            hasVoice: !!p.voice_url,
+            hasVideo: !!p.video_url,
+            photo: p.photo_url || null
+          })));
+        }
+      } catch (e) {
+        console.log(e);
+      }
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: "100%",
-      maxWidth: 340
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: "center",
-      marginBottom: 32
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: "Cormorant Garamond,serif",
-      fontSize: 52,
-      fontWeight: 700,
-      background: "linear-gradient(135deg,#E8647A,#E8A050)",
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent"
-    }
-  }, "aura"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: "rgba(255,255,255,0.6)",
-      fontSize: 14,
-      marginTop: 4
-    }
-  }, "Trouve ta personne \u2728")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      background: "rgba(255,255,255,0.08)",
-      borderRadius: 12,
-      padding: 4,
-      marginBottom: 24
-    }
-  }, ["login", "register"].map(m => /*#__PURE__*/React.createElement("button", {
-    key: m,
-    onClick: () => {
-      setAuthMode(m);
+    async function handleAuth() {
+      setAuthLoading(true);
       setAuthError("");
-    },
-    style: {
-      flex: 1,
-      padding: "10px 0",
-      borderRadius: 9,
-      border: "none",
-      cursor: "pointer",
-      fontSize: 14,
-      fontWeight: 600,
-      fontFamily: "Nunito,sans-serif",
-      background: authMode === m ? "linear-gradient(135deg,#E8647A,#E8A050)" : "transparent",
-      color: authMode === m ? "white" : "rgba(255,255,255,0.55)",
-      transition: "all 0.2s"
-    }
-  }, m === "login" ? "Se connecter" : "S'inscrire"))), authMode === "register" && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    value: authName,
-    onChange: e => setAuthName(e.target.value),
-    placeholder: "Ton pr\xE9nom",
-    type: "text",
-    style: {
-      width: "100%",
-      padding: "14px 16px",
-      borderRadius: 12,
-      border: "1px solid rgba(255,255,255,0.15)",
-      background: "rgba(255,255,255,0.08)",
-      color: "white",
-      fontSize: 15,
-      fontFamily: "Nunito,sans-serif",
-      outline: "none",
-      boxSizing: "border-box"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    value: authEmail,
-    onChange: e => setAuthEmail(e.target.value),
-    placeholder: "Email",
-    type: "email",
-    style: {
-      width: "100%",
-      padding: "14px 16px",
-      borderRadius: 12,
-      border: "1px solid rgba(255,255,255,0.15)",
-      background: "rgba(255,255,255,0.08)",
-      color: "white",
-      fontSize: 15,
-      fontFamily: "Nunito,sans-serif",
-      outline: "none",
-      boxSizing: "border-box"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 20
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    value: authPassword,
-    onChange: e => setAuthPassword(e.target.value),
-    placeholder: "Mot de passe",
-    type: "password",
-    onKeyDown: e => e.key === "Enter" && handleAuth(),
-    style: {
-      width: "100%",
-      padding: "14px 16px",
-      borderRadius: 12,
-      border: "1px solid rgba(255,255,255,0.15)",
-      background: "rgba(255,255,255,0.08)",
-      color: "white",
-      fontSize: 15,
-      fontFamily: "Nunito,sans-serif",
-      outline: "none",
-      boxSizing: "border-box"
-    }
-  })), authError && /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: "#ff6b6b",
-      fontSize: 13,
-      marginBottom: 14,
-      textAlign: "center",
-      padding: "8px 12px",
-      background: "rgba(255,80,80,0.1)",
-      borderRadius: 8
-    }
-  }, authError), /*#__PURE__*/React.createElement("button", {
-    onClick: handleAuth,
-    disabled: authLoading,
-    style: {
-      width: "100%",
-      padding: "15px",
-      borderRadius: 12,
-      border: "none",
-      cursor: authLoading ? "not-allowed" : "pointer",
-      background: "linear-gradient(135deg,#E8647A,#E8A050)",
-      color: "white",
-      fontSize: 16,
-      fontWeight: 700,
-      fontFamily: "Nunito,sans-serif",
-      opacity: authLoading ? 0.7 : 1,
-      transition: "opacity 0.2s"
-    }
-  }, authLoading ? "..." : authMode === "login" ? "Se connecter" : "Créer mon compte"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: "center",
-      marginTop: 20,
-      color: "rgba(255,255,255,0.35)",
-      fontSize: 12
-    }
-  }, "En continuant tu acceptes nos CGU"))), screen === "splash" && /*#__PURE__*/React.createElement("div", {
-    className: "screen"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "splash"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "splash-status"
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 15,
-      fontWeight: 700
-    }
-  }, "9:41"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13
-    }
-  }, "\u25CF\u25CF\u25CF WiFi \uD83D\uDD0B")), /*#__PURE__*/React.createElement("div", {
-    className: "splash-logo"
-  }, "Aura"), /*#__PURE__*/React.createElement("div", {
-    className: "splash-tag"
-  }, "Find your spark"), /*#__PURE__*/React.createElement("div", {
-    className: "splash-pills"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "splash-pill"
-  }, "\uD83D\uDD2E Matching IA"), /*#__PURE__*/React.createElement("div", {
-    className: "splash-pill"
-  }, "\uD83C\uDFA4 Message vocal"), /*#__PURE__*/React.createElement("div", {
-    className: "splash-pill"
-  }, "\uD83C\uDFAC Vid\xE9o 10s"), /*#__PURE__*/React.createElement("div", {
-    className: "splash-pill"
-  }, "\uD83D\uDEE1\uFE0F Profils v\xE9rifi\xE9s")), /*#__PURE__*/React.createElement("div", {
-    className: "splash-divider"
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "btn-primary",
-    onClick: () => setScreen("auth")
-  }, "Commencer gratuitement \u2726"), /*#__PURE__*/React.createElement("button", {
-    className: "btn-ghost",
-    onClick: () => { setScreen("auth"); setAuthMode("login"); }
-  }, "J'ai d\xE9j\xE0 un compte"), /*#__PURE__*/React.createElement("div", {
-    className: "splash-footnote"
-  }, "2 millions de membres \xB7 150 000 couples form\xE9s"))), screen === "app" && /*#__PURE__*/React.createElement("div", {
-    className: "screen"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "status-bar"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "s-time"
-  }, "9:41"), /*#__PURE__*/React.createElement("div", {
-    className: "s-icons"
-  }, /*#__PURE__*/React.createElement("span", null, "\u25CF\u25CF\u25CF"), /*#__PURE__*/React.createElement("span", null, "WiFi"), /*#__PURE__*/React.createElement("span", null, "\uD83D\uDD0B"))), tab === "discover" && /*#__PURE__*/React.createElement("div", {
-    className: "discover"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "disc-header"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "logo"
-  }, "Aura"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "icon-btn",
-    onClick: () => setShowFilters(true)
-  }, "\u2699\uFE0F"), /*#__PURE__*/React.createElement("div", {
-    className: "icon-btn"
-  }, "\uD83D\uDD14"))), /*#__PURE__*/React.createElement("div", {
-    className: "card-stack",
-    onMouseMove: onMM,
-    onMouseUp: onMU,
-    onMouseLeave: onMU
-  }, nn && /*#__PURE__*/React.createElement("div", {
-    className: "pcard bcard2",
-    style: {
-      backgroundImage: `url(${nn.photo})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pcard-grad"
-  })), nxt && /*#__PURE__*/React.createElement("div", {
-    className: "pcard bcard1",
-    style: {
-      backgroundImage: `url(${nxt.photo})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pcard-grad"
-  })), cur ? /*#__PURE__*/React.createElement("div", {
-    className: "pcard fcard",
-    style: {
-      backgroundImage: `url(${cur.photo})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      ...cardStyle
-    },
-    onMouseDown: onMD
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pcard-grad"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "swipe-ov like",
-    style: {
-      opacity: likeOp
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "swipe-lbl like"
-  }, "LIKE \u2713")), /*#__PURE__*/React.createElement("div", {
-    className: "swipe-ov nope",
-    style: {
-      opacity: nopeOp
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "swipe-lbl nope"
-  }, "NOPE \u2717")), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-top"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "match-badge"
-  }, "\u2764\uFE0F ", cur.match, "%"), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-badges"
-  }, cur.verified && /*#__PURE__*/React.createElement("div", {
-    className: "badge-verified"
-  }, "\u2705 V\xE9rifi\xE9"), cur.premium && /*#__PURE__*/React.createElement("div", {
-    className: "badge-premium"
-  }, "\u2B50 Premium"))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      bottom: 96,
-      left: 16,
-      right: 16,
-      display: "flex",
-      gap: 8
-    }
-  }, cur.hasVoice && /*#__PURE__*/React.createElement("div", {
-    className: "media-badge voice",
-    onClick: e => {
-      e.stopPropagation();
-      setMediaPlayer({
-        profile: cur,
-        type: "voice"
-      });
-    }
-  }, "\uD83C\uDFA4 Message vocal"), cur.hasVideo && /*#__PURE__*/React.createElement("div", {
-    className: "media-badge video",
-    onClick: e => {
-      e.stopPropagation();
-      setMediaPlayer({
-        profile: cur,
-        type: "video"
-      });
-    }
-  }, "\uD83C\uDFAC Vid\xE9o 10s")), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-body"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pcard-name-row"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pcard-name"
-  }, cur.name), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-age"
-  }, cur.age)), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-job"
-  }, "\uD83D\uDCBC ", cur.job, " \xB7 ", cur.city), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-tags"
-  }, cur.interests.map(t => /*#__PURE__*/React.createElement("span", {
-    key: t,
-    className: "ptag"
-  }, t))), /*#__PURE__*/React.createElement("div", {
-    className: "pcard-dist"
-  }, "\uD83D\uDCCD ", cur.distance))) : /*#__PURE__*/React.createElement("div", {
-    className: "empty-state"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "empty-icon"
-  }, "\u2728"), /*#__PURE__*/React.createElement("div", {
-    className: "empty-title"
-  }, "C'est tout pour aujourd'hui"), /*#__PURE__*/React.createElement("div", {
-    className: "empty-sub"
-  }, "Reviens demain pour d\xE9couvrir de nouveaux profils pr\xE8s de toi."), /*#__PURE__*/React.createElement("div", {
-    className: "empty-link",
-    onClick: doUndo
-  }, "\uD83D\uDD04 Recommencer la d\xE9mo"))), /*#__PURE__*/React.createElement("div", {
-    className: "actions"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "act-btn act-pass",
-    onClick: doPass
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    className: "act-btn act-undo",
-    onClick: doUndo
-  }, "\u21A9"), /*#__PURE__*/React.createElement("div", {
-    className: "act-btn act-like",
-    onClick: doLike
-  }, "\u2665"), /*#__PURE__*/React.createElement("div", {
-    className: "act-btn act-star",
-    onClick: () => showToast("⭐ Super Like envoyé !")
-  }, "\u2B50"), /*#__PURE__*/React.createElement("div", {
-    className: "act-btn act-boost",
-    onClick: () => showToast("🚀 Boost activé !")
-  }, "\u26A1"))), tab === "messages" && !openChat && /*#__PURE__*/React.createElement("div", {
-    className: "messages"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "sec-header",
-    style: {
-      paddingTop: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "sec-title"
-  }, "Messages"), /*#__PURE__*/React.createElement("div", {
-    className: "icon-btn"
-  }, "\u270F\uFE0F")), /*#__PURE__*/React.createElement("div", {
-    className: "stories"
-  }, (dbProfiles.length > 0 ? dbProfiles : PROFILES).map(p => /*#__PURE__*/React.createElement("div", {
-    key: p.id,
-    className: "story",
-    onClick: () => showToast(`Story de ${p.name}`)
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "story-ring"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "story-inner"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: p.photo,
-    alt: p.name
-  }))), /*#__PURE__*/React.createElement("span", {
-    className: "story-name"
-  }, p.name)))), /*#__PURE__*/React.createElement("div", {
-    className: "conv-list"
-  }, msgs.map(c => /*#__PURE__*/React.createElement("div", {
-    key: c.id,
-    className: "conv",
-    onClick: () => setOpenChat(c)
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "conv-av-wrap"
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "conv-av",
-    src: c.photo,
-    alt: c.name
-  }), c.online && /*#__PURE__*/React.createElement("div", {
-    className: "online-dot"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "conv-info"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "conv-name-row"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "conv-name"
-  }, c.name), /*#__PURE__*/React.createElement("span", {
-    className: "conv-time"
-  }, c.time)), /*#__PURE__*/React.createElement("div", {
-    className: "conv-preview"
-  }, c.lastMsg)), c.unread > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "conv-unread"
-  }, c.unread))))), tab === "messages" && openChat && chatConv && /*#__PURE__*/React.createElement("div", {
-    className: "chat"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "chat-header"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "chat-back",
-    onClick: () => setOpenChat(null)
-  }, "\u2190"), /*#__PURE__*/React.createElement("img", {
-    className: "chat-av",
-    src: chatConv.photo,
-    alt: chatConv.name
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "chat-hinfo"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "chat-hname"
-  }, chatConv.name), /*#__PURE__*/React.createElement("div", {
-    className: "chat-hstatus"
-  }, chatConv.online ? "● En ligne" : "Hors ligne")), /*#__PURE__*/React.createElement("div", {
-    className: "chat-hmore"
-  }, "\u22EF")), /*#__PURE__*/React.createElement("div", {
-    className: "chat-msgs"
-  }, chatConv.chat.map((m, i) => /*#__PURE__*/React.createElement("div", {
-    key: i
-  }, /*#__PURE__*/React.createElement("div", {
-    className: `msg-row ${m.from}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: `bubble ${m.from}`
-  }, m.text)), /*#__PURE__*/React.createElement("div", {
-    className: `msg-row ${m.from}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "btime"
-  }, m.time))))), /*#__PURE__*/React.createElement("div", {
-    className: "chat-bar"
-  }, /*#__PURE__*/React.createElement("textarea", {
-    className: "chat-input",
-    value: chatInput,
-    onChange: e => setChatInput(e.target.value),
-    placeholder: "\xC9cris un message...",
-    rows: 1,
-    onKeyDown: e => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMsg();
+      try {
+        if (authMode === "register") {
+          const res = await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+            options: {
+              data: {
+                name: authName
+              }
+            }
+          });
+          if (res.error) {
+            setAuthError(res.error.message || res.msg || JSON.stringify(res.error));
+          } else {
+            const login = await supabase.auth.signIn({
+              email: authEmail,
+              password: authPassword
+            });
+            if (login.access_token) {
+              setCurrentUser({
+                id: login.user?.id
+              });
+              await loadProfiles();
+              setScreen("app");
+            } else {
+              setAuthError("Compte cree ! Connecte-toi.");
+              setAuthMode("login");
+            }
+          }
+        } else {
+          const res = await supabase.auth.signIn({
+            email: authEmail,
+            password: authPassword
+          });
+          if (res.access_token) {
+            setCurrentUser({
+              id: res.user?.id
+            });
+            await loadProfiles();
+            setScreen("app");
+          } else {
+            setAuthError(res.error?.message || res.error_description || res.msg || "Email ou mot de passe incorrect. Verifie tes identifiants.");
+          }
+        }
+      } catch (e) {
+        console.error("handleAuth error:", e);
+        setAuthError("Erreur: " + e.message);
       }
+      setAuthLoading(false);
     }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "send-btn",
-    onClick: sendMsg
-  }, "\u27A4"))), tab === "profile" && /*#__PURE__*/React.createElement("div", {
-    className: "profile-scr"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "profile-cover"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: PROFILES[1].photo,
-    alt: "cover"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "cover-ov"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "profile-av-row"
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "profile-av",
-    src: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
-    alt: "me"
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "edit-btn"
-  }, "\u270F\uFE0F Modifier")), /*#__PURE__*/React.createElement("div", {
-    className: "profile-names"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pname"
-  }, "Thomas, 28"), /*#__PURE__*/React.createElement("div", {
-    className: "ptag2"
-  }, "\uD83D\uDCBC D\xE9veloppeur \xB7 Paris")), /*#__PURE__*/React.createElement("div", {
-    className: "pstats"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pstat"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pstat-n"
-  }, "247"), /*#__PURE__*/React.createElement("div", {
-    className: "pstat-l"
-  }, "Likes")), /*#__PURE__*/React.createElement("div", {
-    className: "pstat"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pstat-n"
-  }, "18"), /*#__PURE__*/React.createElement("div", {
-    className: "pstat-l"
-  }, "Matchs")), /*#__PURE__*/React.createElement("div", {
-    className: "pstat"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pstat-n"
-  }, "94%"), /*#__PURE__*/React.createElement("div", {
-    className: "pstat-l"
-  }, "Profil"))), /*#__PURE__*/React.createElement("div", {
-    className: "rec-section"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "rec-title"
-  }, "\uD83C\uDF99\uFE0F Pr\xE9sentation multim\xE9dia ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      color: "var(--muted)",
-      fontWeight: 400
-    }
-  }, "nouveaut\xE9")), /*#__PURE__*/React.createElement("div", {
-    className: "rec-cards"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: `rec-card ${recHas.voice ? "has-rec" : ""}`,
-    onClick: () => startRec("voice")
-  }, recHas.voice && /*#__PURE__*/React.createElement("div", {
-    className: "rec-indicator"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "rec-icon"
-  }, "\uD83C\uDFA4"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-lbl"
-  }, "Message vocal"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-sub"
-  }, recHas.voice ? "✓ Enregistré" : "10 secondes")), /*#__PURE__*/React.createElement("div", {
-    className: `rec-card ${recHas.video ? "has-rec" : ""}`,
-    onClick: () => startRec("video")
-  }, recHas.video && /*#__PURE__*/React.createElement("div", {
-    className: "rec-indicator"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "rec-icon"
-  }, "\uD83C\uDFAC"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-lbl"
-  }, "Vid\xE9o courte"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-sub"
-  }, recHas.video ? "✓ Enregistrée" : "10 secondes")))), /*#__PURE__*/React.createElement("div", {
-    className: "psection"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "psection-title"
-  }, "Mes int\xE9r\xEAts"), /*#__PURE__*/React.createElement("div", {
-    className: "itags"
-  }, ["🎵 Musique", "✈️ Voyage", "🏃 Running", "🎬 Cinéma", "📚 Tech", "🍕 Cuisine"].map(t => /*#__PURE__*/React.createElement("span", {
-    key: t,
-    className: "itag"
-  }, t)))), /*#__PURE__*/React.createElement("div", {
-    className: "psection"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "psection-title"
-  }, "Param\xE8tres"), [{
-    icon: "🔔",
-    lbl: "Notifications",
-    toggle: true,
-    on: true
-  }, {
-    icon: "🌍",
-    lbl: "Visibilité du profil",
-    toggle: true,
-    on: true
-  }, {
-    icon: "📍",
-    lbl: "Géolocalisation",
-    toggle: true,
-    on: false
-  }, {
-    icon: "🛡️",
-    lbl: "Confidentialité & RGPD",
-    arrow: true
-  }, {
-    icon: "💳",
-    lbl: "Abonnement Premium",
-    arrow: true
-  }].map((s, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "setting",
-    onClick: () => s.arrow && showToast(`Ouvre ${s.lbl}`)
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "setting-l"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "setting-icon"
-  }, s.icon), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14,
-      fontWeight: 600
-    }
-  }, s.lbl)), s.toggle && /*#__PURE__*/React.createElement("div", {
-    className: `toggle ${s.on ? "" : "off"}`
-  }), s.arrow && /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: "var(--dim)"
-    }
-  }, "\u203A"))))), /*#__PURE__*/React.createElement("div", {
-    className: "bottom-nav"
-  }, [{
-    id: "discover",
-    icon: "🔮",
-    lbl: "Découvrir"
-  }, {
-    id: "messages",
-    icon: "💬",
-    lbl: "Messages",
-    badge: 3
-  }, {
-    id: "premium",
-    icon: "👑",
-    lbl: "Premium"
-  }, {
-    id: "profile",
-    icon: "👤",
-    lbl: "Profil"
-  }].map(t => /*#__PURE__*/React.createElement("div", {
-    key: t.id,
-    className: `nav-item ${tab === t.id ? "active" : ""}`,
-    onClick: () => {
-      setTab(t.id);
-      if (t.id !== "messages") setOpenChat(null);
-    }
-  }, t.badge && tab !== "messages" && /*#__PURE__*/React.createElement("div", {
-    className: "nav-badge"
-  }, t.badge), /*#__PURE__*/React.createElement("div", {
-    className: "nav-icon"
-  }, t.icon), /*#__PURE__*/React.createElement("div", {
-    className: "nav-label"
-  }, t.lbl)))), recording && /*#__PURE__*/React.createElement("div", {
-    className: "recording-overlay"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "rec-pulse"
-  }, recording.type === "voice" ? "🎤" : "🎬"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-status"
-  }, recording.type === "voice" ? "Enregistrement vocal" : "Enregistrement vidéo"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-timer"
-  }, (10 - recording.elapsed).toFixed(1), "s"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-hint"
-  }, recording.type === "voice" ? "Présentez-vous en quelques mots…" : "Regardez la caméra et souriez…"), /*#__PURE__*/React.createElement("div", {
-    className: "rec-progress"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "rec-progress-fill",
-    style: {
-      width: `${recording.elapsed / 10 * 100}%`
-    }
-  })), /*#__PURE__*/React.createElement("button", {
-    className: "rec-stop",
-    onClick: () => stopRec()
-  }, "\u23F9 Arr\xEAter")), mediaPlayer && /*#__PURE__*/React.createElement("div", {
-    className: "media-overlay"
-  }, /*#__PURE__*/React.createElement("img", {
-    className: "media-avatar",
-    src: mediaPlayer.profile.photo,
-    alt: mediaPlayer.profile.name
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "media-name"
-  }, mediaPlayer.profile.name), /*#__PURE__*/React.createElement("div", {
-    className: "media-sub"
-  }, mediaPlayer.type === "voice" ? "🎤 Message vocal • 10 sec" : "🎬 Vidéo de présentation • 10 sec"), mediaPlayer.type === "voice" && /*#__PURE__*/React.createElement("div", {
-    className: "voice-player"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "voice-bars"
-  }, Array.from({
-    length: 28
-  }).map((_, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "vbar",
-    style: {
-      height: `${20 + Math.sin(i * 0.7) * 14 + Math.random() * 12}px`,
-      animationDelay: `${i * 0.04}s`,
-      animationPlayState: playing ? "running" : "paused",
-      opacity: playing ? 1 : 0.35
-    }
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "voice-controls"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "play-btn",
-    onClick: playing ? stopPlay : startPlay
-  }, playing ? "⏸" : "▶"), /*#__PURE__*/React.createElement("div", {
-    className: "voice-progress"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "voice-fill",
-    style: {
-      width: `${playProg}%`
-    }
-  })), /*#__PURE__*/React.createElement("span", {
-    className: "voice-time"
-  }, playing ? `${(playProg / 10).toFixed(1)}s` : "0:10"))), mediaPlayer.type === "video" && /*#__PURE__*/React.createElement("div", {
-    className: "video-player"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "video-placeholder"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "video-icon"
-  }, "\u25B6\uFE0F"), /*#__PURE__*/React.createElement("div", {
-    className: "video-label"
-  }, "VID\xC9O DE PR\xC9SENTATION"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "var(--muted)"
-    }
-  }, mediaPlayer.profile.name, " \u2022 10 secondes")), /*#__PURE__*/React.createElement("div", {
-    className: "video-duration"
-  }, "0:10")), /*#__PURE__*/React.createElement("button", {
-    className: "media-close",
-    onClick: () => {
-      setMediaPlayer(null);
-      stopPlay();
-    }
-  }, "Fermer")), showFilters && /*#__PURE__*/React.createElement("div", {
-    className: "filters-ov"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "filters-handle"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "filters-title"
-  }, "Affiner la recherche"), /*#__PURE__*/React.createElement("div", {
-    className: "filters-body"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fgroup"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flabel"
-  }, "Tranche d'\xE2ge"), /*#__PURE__*/React.createElement("div", {
-    className: "frank"
-  }, "18 \u2014 ", ageF, " ans"), /*#__PURE__*/React.createElement("input", {
-    className: "fslider",
-    type: "range",
-    min: 20,
-    max: 55,
-    value: ageF,
-    onChange: e => setAgeF(e.target.value)
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "fgroup"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flabel"
-  }, "Distance maximale"), /*#__PURE__*/React.createElement("div", {
-    className: "frank"
-  }, distF, " km"), /*#__PURE__*/React.createElement("input", {
-    className: "fslider",
-    type: "range",
-    min: 5,
-    max: 100,
-    value: distF,
-    onChange: e => setDistF(e.target.value)
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "fgroup"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flabel"
-  }, "Je cherche"), /*#__PURE__*/React.createElement("div", {
-    className: "fgrid"
-  }, ["Femmes", "Hommes", "Non-binaires", "Tout le monde"].map(g => /*#__PURE__*/React.createElement("div", {
-    key: g,
-    className: `foption ${genderF === g ? "active" : ""}`,
-    onClick: () => setGenderF(g)
-  }, g)))), /*#__PURE__*/React.createElement("div", {
-    className: "fgroup"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flabel"
-  }, "Centres d'int\xE9r\xEAt"), /*#__PURE__*/React.createElement("div", {
-    className: "finterests"
-  }, ["Art", "Cuisine", "Voyage", "Musique", "Sport", "Cinéma", "Lecture", "Gaming", "Nature", "Yoga"].map(i => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: `fibtn ${intF.includes(i) ? "active" : ""}`,
-    onClick: () => setIntF(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])
-  }, i)))), /*#__PURE__*/React.createElement("div", {
-    className: "fgroup"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flabel"
-  }, "M\xE9dias de pr\xE9sentation"), /*#__PURE__*/React.createElement("div", {
-    className: "fgrid"
-  }, ["Avec vocal 🎤", "Avec vidéo 🎬", "Avec photo", "Tous"].map(o => /*#__PURE__*/React.createElement("div", {
-    key: o,
-    className: `foption ${o === "Tous" ? "active" : ""}`
-  }, o))))), /*#__PURE__*/React.createElement("button", {
-    className: "filter-apply",
-    onClick: () => {
-      setShowFilters(false);
-      showToast("✅ Filtres appliqués");
-    }
-  }, "Appliquer les filtres")), showMatch && matchedProfile && /*#__PURE__*/React.createElement("div", {
-    className: "match-popup"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "match-emoji"
-  }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("div", {
-    className: "match-title"
-  }, "C'est un Match !"), /*#__PURE__*/React.createElement("div", {
-    className: "match-sub"
-  }, "Toi et ", matchedProfile.name, " vous vous \xEAtes mutuellement plu \u2728"), /*#__PURE__*/React.createElement("div", {
-    className: "match-photos"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "match-me"
-  }, "\uD83D\uDE0A"), /*#__PURE__*/React.createElement("div", {
-    className: "match-hearts"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "match-heart"
-  }, "\uD83D\uDC95"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "var(--muted)"
-    }
-  }, "match")), /*#__PURE__*/React.createElement("img", {
-    className: "match-ph",
-    src: matchedProfile.photo,
-    alt: matchedProfile.name
-  })), /*#__PURE__*/React.createElement("button", {
-    className: "match-btn match-btn-p",
-    onClick: () => {
-      setShowMatch(false);
-      setTab("messages");
-      setOpenChat(msgs[0]);
-    }
-  }, "\uD83D\uDCAC Envoyer un message"), /*#__PURE__*/React.createElement("button", {
-    className: "match-btn match-btn-s",
-    onClick: () => setShowMatch(false)
-  }, "Continuer \xE0 explorer")), toast && /*#__PURE__*/React.createElement("div", {
-    className: "toast"
-  }, toast))));
-}
-window.AuraApp = AuraApp;
 
+    // Auth check on startup
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        if (supabase.auth.isLoggedIn()) {
+          setCurrentUser({
+            id: supabase.auth.getUserId()
+          });
+          loadProfiles();
+          setScreen("app");
+        } else {
+          setScreen("auth");
+        }
+      }, 2200);
+      return () => clearTimeout(timer);
+    }, []);
+    useEffect(() => {
+      const t = setInterval(() => {
+        const next = (bgIdx + 1) % BG_SCENES.length;
+        setBgNext(next);
+        setBgCrossfade(true);
+        setTimeout(() => {
+          setBgIdx(next);
+          setBgCrossfade(false);
+        }, 1400);
+      }, 7000);
+      return () => clearInterval(t);
+    }, [bgIdx]);
+    const showToast = msg => {
+      setToast(msg);
+      setTimeout(() => setToast(null), 2200);
+    };
+
+    // ── Swipe ──
+    const onMD = e => setDrag({
+      on: true,
+      x: 0,
+      y: 0,
+      sx: e.clientX,
+      sy: e.clientY
+    });
+    const onMM = e => {
+      if (!drag.on) return;
+      setDrag(d => ({
+        ...d,
+        x: e.clientX - d.sx,
+        y: e.clientY - d.sy
+      }));
+    };
+    const onMU = () => {
+      if (!drag.on) return;
+      if (drag.x > 85) doLike();else if (drag.x < -85) doPass();
+      setDrag({
+        on: false,
+        x: 0,
+        y: 0,
+        sx: 0,
+        sy: 0
+      });
+    };
+    const doLike = () => {
+      if (!profiles.length) return;
+      const p = profiles[0];
+      if (Math.random() > 0.38) {
+        setMatchedProfile(p);
+        setShowMatch(true);
+      } else showToast("💛 Tu as liké " + p.name);
+      setProfiles(prev => prev.slice(1));
+      setBgIdx(i => (i + 1) % BG_SCENES.length);
+    };
+    const doPass = () => {
+      if (!profiles.length) return;
+      setProfiles(prev => prev.slice(1));
+      setBgIdx(i => (i + 1) % BG_SCENES.length);
+      showToast("👋 Profil passé");
+    };
+    const doUndo = () => {
+      setProfiles(PROFILES);
+      showToast("↩ Retour au début");
+    };
+
+    // ── Recording ──
+    const startRec = type => {
+      setRecording({
+        type,
+        elapsed: 0
+      });
+      let t = 0;
+      recTimerRef.current = setInterval(() => {
+        t += 0.1;
+        setRecording(r => ({
+          ...r,
+          elapsed: Math.min(t, 10)
+        }));
+        if (t >= 10) stopRec(type);
+      }, 100);
+    };
+    const stopRec = type => {
+      clearInterval(recTimerRef.current);
+      setRecording(null);
+      setRecHas(prev => ({
+        ...prev,
+        [type || recording?.type]: true
+      }));
+      showToast(type === "voice" || recording?.type === "voice" ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
+    };
+
+    // ── Voice playback simulation ──
+    const startPlay = () => {
+      setPlaying(true);
+      setPlayProg(0);
+      let p = 0;
+      playTimerRef.current = setInterval(() => {
+        p += 1;
+        setPlayProg(p);
+        if (p >= 100) {
+          clearInterval(playTimerRef.current);
+          setPlaying(false);
+          setPlayProg(0);
+        }
+      }, 100);
+    };
+    const stopPlay = () => {
+      clearInterval(playTimerRef.current);
+      setPlaying(false);
+      setPlayProg(0);
+    };
+
+    // ── Chat ──
+    const sendMsg = () => {
+      if (!chatInput.trim() || !openChat) return;
+      setMsgs(prev => prev.map(c => c.id === openChat.id ? {
+        ...c,
+        chat: [...c.chat, {
+          from: "me",
+          text: chatInput,
+          time: "Maintenant"
+        }],
+        lastMsg: chatInput,
+        unread: 0
+      } : c));
+      setChatInput("");
+    };
+    const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
+    const cur = profiles[0],
+      nxt = profiles[1],
+      nn = profiles[2];
+    const likeOp = Math.max(0, Math.min(1, drag.x / 85));
+    const nopeOp = Math.max(0, Math.min(1, -drag.x / 85));
+    const cardStyle = drag.on ? {
+      transform: `translate(${drag.x}px,${drag.y}px) rotate(${drag.x * 0.07}deg)`,
+      transition: "none"
+    } : {};
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("style", null, css), /*#__PURE__*/React.createElement("div", {
+      className: "shell"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "bg-wrap"
+    }, /*#__PURE__*/React.createElement(SceneBg, {
+      sceneIndex: bgIdx,
+      opacity: 1
+    }), /*#__PURE__*/React.createElement(SceneBg, {
+      sceneIndex: bgNext,
+      opacity: bgCrossfade ? 1 : 0,
+      transition: "opacity 1.8s ease"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "bg-overlay"
+    })), screen === "auth" && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "32px 24px",
+        zIndex: 50,
+        background: "rgba(8,12,28,0.88)"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: "100%",
+        maxWidth: 340
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        marginBottom: 32
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "Cormorant Garamond,serif",
+        fontSize: 52,
+        fontWeight: 700,
+        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent"
+      }
+    }, "aura"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "rgba(255,255,255,0.6)",
+        fontSize: 14,
+        marginTop: 4
+      }
+    }, "Trouve ta personne \u2728")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        background: "rgba(255,255,255,0.08)",
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 24
+      }
+    }, ["login", "register"].map(m => /*#__PURE__*/React.createElement("button", {
+      key: m,
+      onClick: () => {
+        setAuthMode(m);
+        setAuthError("");
+      },
+      style: {
+        flex: 1,
+        padding: "10px 0",
+        borderRadius: 9,
+        border: "none",
+        cursor: "pointer",
+        fontSize: 14,
+        fontWeight: 600,
+        fontFamily: "Nunito,sans-serif",
+        background: authMode === m ? "linear-gradient(135deg,#E8647A,#E8A050)" : "transparent",
+        color: authMode === m ? "white" : "rgba(255,255,255,0.55)",
+        transition: "all 0.2s"
+      }
+    }, m === "login" ? "Se connecter" : "S'inscrire"))), authMode === "register" && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      value: authName,
+      onChange: e => setAuthName(e.target.value),
+      placeholder: "Ton pr\xE9nom",
+      type: "text",
+      style: {
+        width: "100%",
+        padding: "14px 16px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.15)",
+        background: "rgba(255,255,255,0.08)",
+        color: "white",
+        fontSize: 15,
+        fontFamily: "Nunito,sans-serif",
+        outline: "none",
+        boxSizing: "border-box"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      value: authEmail,
+      onChange: e => setAuthEmail(e.target.value),
+      placeholder: "Email",
+      type: "email",
+      style: {
+        width: "100%",
+        padding: "14px 16px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.15)",
+        background: "rgba(255,255,255,0.08)",
+        color: "white",
+        fontSize: 15,
+        fontFamily: "Nunito,sans-serif",
+        outline: "none",
+        boxSizing: "border-box"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 20
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      value: authPassword,
+      onChange: e => setAuthPassword(e.target.value),
+      placeholder: "Mot de passe",
+      type: "password",
+      onKeyDown: e => e.key === "Enter" && handleAuth(),
+      style: {
+        width: "100%",
+        padding: "14px 16px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.15)",
+        background: "rgba(255,255,255,0.08)",
+        color: "white",
+        fontSize: 15,
+        fontFamily: "Nunito,sans-serif",
+        outline: "none",
+        boxSizing: "border-box"
+      }
+    })), authError && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#ff6b6b",
+        fontSize: 13,
+        marginBottom: 14,
+        textAlign: "center",
+        padding: "8px 12px",
+        background: "rgba(255,80,80,0.1)",
+        borderRadius: 8
+      }
+    }, authError), /*#__PURE__*/React.createElement("button", {
+      onClick: handleAuth,
+      disabled: authLoading,
+      style: {
+        width: "100%",
+        padding: "15px",
+        borderRadius: 12,
+        border: "none",
+        cursor: authLoading ? "not-allowed" : "pointer",
+        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        color: "white",
+        fontSize: 16,
+        fontWeight: 700,
+        fontFamily: "Nunito,sans-serif",
+        opacity: authLoading ? 0.7 : 1,
+        transition: "opacity 0.2s"
+      }
+    }, authLoading ? "..." : authMode === "login" ? "Se connecter" : "Créer mon compte"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        marginTop: 20,
+        color: "rgba(255,255,255,0.35)",
+        fontSize: 12
+      }
+    }, "En continuant tu acceptes nos CGU"))), screen === "splash" && /*#__PURE__*/React.createElement("div", {
+      className: "screen"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "splash"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "splash-status"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 700
+      }
+    }, "9:41"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13
+      }
+    }, "\u25CF\u25CF\u25CF WiFi \uD83D\uDD0B")), /*#__PURE__*/React.createElement("div", {
+      className: "splash-logo"
+    }, "Aura"), /*#__PURE__*/React.createElement("div", {
+      className: "splash-tag"
+    }, "Find your spark"), /*#__PURE__*/React.createElement("div", {
+      className: "splash-pills"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "splash-pill"
+    }, "\uD83D\uDD2E Matching IA"), /*#__PURE__*/React.createElement("div", {
+      className: "splash-pill"
+    }, "\uD83C\uDFA4 Message vocal"), /*#__PURE__*/React.createElement("div", {
+      className: "splash-pill"
+    }, "\uD83C\uDFAC Vid\xE9o 10s"), /*#__PURE__*/React.createElement("div", {
+      className: "splash-pill"
+    }, "\uD83D\uDEE1\uFE0F Profils v\xE9rifi\xE9s")), /*#__PURE__*/React.createElement("div", {
+      className: "splash-divider"
+    }), /*#__PURE__*/React.createElement("button", {
+      className: "btn-primary",
+      onClick: () => setScreen("app")
+    }, "Commencer gratuitement \u2726"), /*#__PURE__*/React.createElement("button", {
+      className: "btn-ghost",
+      onClick: () => setScreen("app")
+    }, "J'ai d\xE9j\xE0 un compte"), /*#__PURE__*/React.createElement("div", {
+      className: "splash-footnote"
+    }, "2 millions de membres \xB7 150 000 couples form\xE9s"))), screen === "app" && /*#__PURE__*/React.createElement("div", {
+      className: "screen"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "status-bar"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "s-time"
+    }, "9:41"), /*#__PURE__*/React.createElement("div", {
+      className: "s-icons"
+    }, /*#__PURE__*/React.createElement("span", null, "\u25CF\u25CF\u25CF"), /*#__PURE__*/React.createElement("span", null, "WiFi"), /*#__PURE__*/React.createElement("span", null, "\uD83D\uDD0B"))), tab === "discover" && /*#__PURE__*/React.createElement("div", {
+      className: "discover"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "disc-header"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "logo"
+    }, "Aura"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "icon-btn",
+      onClick: () => setShowFilters(true)
+    }, "\u2699\uFE0F"), /*#__PURE__*/React.createElement("div", {
+      className: "icon-btn"
+    }, "\uD83D\uDD14"))), /*#__PURE__*/React.createElement("div", {
+      className: "card-stack",
+      onMouseMove: onMM,
+      onMouseUp: onMU,
+      onMouseLeave: onMU
+    }, nn && /*#__PURE__*/React.createElement("div", {
+      className: "pcard bcard2",
+      style: {
+        backgroundImage: `url(${nn.photo})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pcard-grad"
+    })), nxt && /*#__PURE__*/React.createElement("div", {
+      className: "pcard bcard1",
+      style: {
+        backgroundImage: `url(${nxt.photo})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pcard-grad"
+    })), cur ? /*#__PURE__*/React.createElement("div", {
+      className: "pcard fcard",
+      style: {
+        backgroundImage: `url(${cur.photo})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        ...cardStyle
+      },
+      onMouseDown: onMD
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pcard-grad"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "swipe-ov like",
+      style: {
+        opacity: likeOp
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "swipe-lbl like"
+    }, "LIKE \u2713")), /*#__PURE__*/React.createElement("div", {
+      className: "swipe-ov nope",
+      style: {
+        opacity: nopeOp
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "swipe-lbl nope"
+    }, "NOPE \u2717")), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-top"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "match-badge"
+    }, "\u2764\uFE0F ", cur.match, "%"), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-badges"
+    }, cur.verified && /*#__PURE__*/React.createElement("div", {
+      className: "badge-verified"
+    }, "\u2705 V\xE9rifi\xE9"), cur.premium && /*#__PURE__*/React.createElement("div", {
+      className: "badge-premium"
+    }, "\u2B50 Premium"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        bottom: 96,
+        left: 16,
+        right: 16,
+        display: "flex",
+        gap: 8
+      }
+    }, cur.hasVoice && /*#__PURE__*/React.createElement("div", {
+      className: "media-badge voice",
+      onClick: e => {
+        e.stopPropagation();
+        setMediaPlayer({
+          profile: cur,
+          type: "voice"
+        });
+      }
+    }, "\uD83C\uDFA4 Message vocal"), cur.hasVideo && /*#__PURE__*/React.createElement("div", {
+      className: "media-badge video",
+      onClick: e => {
+        e.stopPropagation();
+        setMediaPlayer({
+          profile: cur,
+          type: "video"
+        });
+      }
+    }, "\uD83C\uDFAC Vid\xE9o 10s")), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-body"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pcard-name-row"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pcard-name"
+    }, cur.name), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-age"
+    }, cur.age)), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-job"
+    }, "\uD83D\uDCBC ", cur.job, " \xB7 ", cur.city), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-tags"
+    }, cur.interests.map(t => /*#__PURE__*/React.createElement("span", {
+      key: t,
+      className: "ptag"
+    }, t))), /*#__PURE__*/React.createElement("div", {
+      className: "pcard-dist"
+    }, "\uD83D\uDCCD ", cur.distance))) : /*#__PURE__*/React.createElement("div", {
+      className: "empty-state"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "empty-icon"
+    }, "\u2728"), /*#__PURE__*/React.createElement("div", {
+      className: "empty-title"
+    }, "C'est tout pour aujourd'hui"), /*#__PURE__*/React.createElement("div", {
+      className: "empty-sub"
+    }, "Reviens demain pour d\xE9couvrir de nouveaux profils pr\xE8s de toi."), /*#__PURE__*/React.createElement("div", {
+      className: "empty-link",
+      onClick: doUndo
+    }, "\uD83D\uDD04 Recommencer la d\xE9mo"))), /*#__PURE__*/React.createElement("div", {
+      className: "actions"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "act-btn act-pass",
+      onClick: doPass
+    }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+      className: "act-btn act-undo",
+      onClick: doUndo
+    }, "\u21A9"), /*#__PURE__*/React.createElement("div", {
+      className: "act-btn act-like",
+      onClick: doLike
+    }, "\u2665"), /*#__PURE__*/React.createElement("div", {
+      className: "act-btn act-star",
+      onClick: () => showToast("⭐ Super Like envoyé !")
+    }, "\u2B50"), /*#__PURE__*/React.createElement("div", {
+      className: "act-btn act-boost",
+      onClick: () => showToast("🚀 Boost activé !")
+    }, "\u26A1"))), tab === "messages" && !openChat && /*#__PURE__*/React.createElement("div", {
+      className: "messages"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "sec-header",
+      style: {
+        paddingTop: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "sec-title"
+    }, "Messages"), /*#__PURE__*/React.createElement("div", {
+      className: "icon-btn"
+    }, "\u270F\uFE0F")), /*#__PURE__*/React.createElement("div", {
+      className: "stories"
+    }, (dbProfiles.length > 0 ? dbProfiles : PROFILES).map(p => /*#__PURE__*/React.createElement("div", {
+      key: p.id,
+      className: "story",
+      onClick: () => showToast(`Story de ${p.name}`)
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "story-ring"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "story-inner"
+    }, /*#__PURE__*/React.createElement("img", {
+      src: p.photo,
+      alt: p.name
+    }))), /*#__PURE__*/React.createElement("span", {
+      className: "story-name"
+    }, p.name)))), /*#__PURE__*/React.createElement("div", {
+      className: "conv-list"
+    }, msgs.map(c => /*#__PURE__*/React.createElement("div", {
+      key: c.id,
+      className: "conv",
+      onClick: () => setOpenChat(c)
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "conv-av-wrap"
+    }, /*#__PURE__*/React.createElement("img", {
+      className: "conv-av",
+      src: c.photo,
+      alt: c.name
+    }), c.online && /*#__PURE__*/React.createElement("div", {
+      className: "online-dot"
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "conv-info"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "conv-name-row"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "conv-name"
+    }, c.name), /*#__PURE__*/React.createElement("span", {
+      className: "conv-time"
+    }, c.time)), /*#__PURE__*/React.createElement("div", {
+      className: "conv-preview"
+    }, c.lastMsg)), c.unread > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "conv-unread"
+    }, c.unread))))), tab === "messages" && openChat && chatConv && /*#__PURE__*/React.createElement("div", {
+      className: "chat"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "chat-header"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "chat-back",
+      onClick: () => setOpenChat(null)
+    }, "\u2190"), /*#__PURE__*/React.createElement("img", {
+      className: "chat-av",
+      src: chatConv.photo,
+      alt: chatConv.name
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "chat-hinfo"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "chat-hname"
+    }, chatConv.name), /*#__PURE__*/React.createElement("div", {
+      className: "chat-hstatus"
+    }, chatConv.online ? "● En ligne" : "Hors ligne")), /*#__PURE__*/React.createElement("div", {
+      className: "chat-hmore"
+    }, "\u22EF")), /*#__PURE__*/React.createElement("div", {
+      className: "chat-msgs"
+    }, chatConv.chat.map((m, i) => /*#__PURE__*/React.createElement("div", {
+      key: i
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `msg-row ${m.from}`
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `bubble ${m.from}`
+    }, m.text)), /*#__PURE__*/React.createElement("div", {
+      className: `msg-row ${m.from}`
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "btime"
+    }, m.time))))), /*#__PURE__*/React.createElement("div", {
+      className: "chat-bar"
+    }, /*#__PURE__*/React.createElement("textarea", {
+      className: "chat-input",
+      value: chatInput,
+      onChange: e => setChatInput(e.target.value),
+      placeholder: "\xC9cris un message...",
+      rows: 1,
+      onKeyDown: e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMsg();
+        }
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "send-btn",
+      onClick: sendMsg
+    }, "\u27A4"))), tab === "profile" && /*#__PURE__*/React.createElement("div", {
+      className: "profile-scr"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "profile-cover"
+    }, /*#__PURE__*/React.createElement("img", {
+      src: PROFILES[1].photo,
+      alt: "cover"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "cover-ov"
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "profile-av-row"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative",
+        display: "inline-block"
+      }
+    }, /*#__PURE__*/React.createElement("img", {
+      className: "profile-av",
+      src: avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
+      alt: "me",
+      style: {
+        width: 88,
+        height: 88,
+        borderRadius: "50%",
+        objectFit: "cover",
+        border: "3px solid var(--rose)"
+      }
+    }), /*#__PURE__*/React.createElement("label", {
+      style: {
+        position: "absolute",
+        bottom: 0,
+        right: 0,
+        background: "var(--rose)",
+        borderRadius: "50%",
+        width: 28,
+        height: 28,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        fontSize: 14,
+        border: "2px solid #111"
+      }
+    }, avatarUploading ? "⏳" : "📷", /*#__PURE__*/React.createElement("input", {
+      type: "file",
+      accept: "image/*",
+      style: {
+        display: "none"
+      },
+      onChange: e => e.target.files[0] && uploadAvatar(e.target.files[0])
+    }))), /*#__PURE__*/React.createElement("button", {
+      className: "edit-btn"
+    }, "\u270F\uFE0F Modifier")), /*#__PURE__*/React.createElement("div", {
+      className: "profile-names"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pname"
+    }, "Thomas, 28"), /*#__PURE__*/React.createElement("div", {
+      className: "ptag2"
+    }, "\uD83D\uDCBC D\xE9veloppeur \xB7 Paris")), /*#__PURE__*/React.createElement("div", {
+      className: "pstats"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pstat"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pstat-n"
+    }, "247"), /*#__PURE__*/React.createElement("div", {
+      className: "pstat-l"
+    }, "Likes")), /*#__PURE__*/React.createElement("div", {
+      className: "pstat"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pstat-n"
+    }, "18"), /*#__PURE__*/React.createElement("div", {
+      className: "pstat-l"
+    }, "Matchs")), /*#__PURE__*/React.createElement("div", {
+      className: "pstat"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pstat-n"
+    }, "94%"), /*#__PURE__*/React.createElement("div", {
+      className: "pstat-l"
+    }, "Profil"))), /*#__PURE__*/React.createElement("div", {
+      className: "rec-section"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "rec-title"
+    }, "\uD83C\uDF99\uFE0F Pr\xE9sentation multim\xE9dia ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "var(--muted)",
+        fontWeight: 400
+      }
+    }, "nouveaut\xE9")), /*#__PURE__*/React.createElement("div", {
+      className: "rec-cards"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `rec-card ${recHas.voice ? "has-rec" : ""}`,
+      onClick: () => startRec("voice")
+    }, recHas.voice && /*#__PURE__*/React.createElement("div", {
+      className: "rec-indicator"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "rec-icon"
+    }, "\uD83C\uDFA4"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-lbl"
+    }, "Message vocal"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-sub"
+    }, recHas.voice ? "✓ Enregistré" : "10 secondes")), /*#__PURE__*/React.createElement("div", {
+      className: `rec-card ${recHas.video ? "has-rec" : ""}`,
+      onClick: () => startRec("video")
+    }, recHas.video && /*#__PURE__*/React.createElement("div", {
+      className: "rec-indicator"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "rec-icon"
+    }, "\uD83C\uDFAC"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-lbl"
+    }, "Vid\xE9o courte"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-sub"
+    }, recHas.video ? "✓ Enregistrée" : "10 secondes")))), /*#__PURE__*/React.createElement("div", {
+      className: "psection"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "psection-title"
+    }, "Mes int\xE9r\xEAts"), /*#__PURE__*/React.createElement("div", {
+      className: "itags"
+    }, ["🎵 Musique", "✈️ Voyage", "🏃 Running", "🎬 Cinéma", "📚 Tech", "🍕 Cuisine"].map(t => /*#__PURE__*/React.createElement("span", {
+      key: t,
+      className: "itag"
+    }, t)))), /*#__PURE__*/React.createElement("div", {
+      className: "psection"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "psection-title"
+    }, "Param\xE8tres"), [{
+      icon: "🔔",
+      lbl: "Notifications",
+      toggle: true,
+      on: true
+    }, {
+      icon: "🌍",
+      lbl: "Visibilité du profil",
+      toggle: true,
+      on: true
+    }, {
+      icon: "📍",
+      lbl: "Géolocalisation",
+      toggle: true,
+      on: false
+    }, {
+      icon: "🛡️",
+      lbl: "Confidentialité & RGPD",
+      arrow: true
+    }, {
+      icon: "💳",
+      lbl: "Abonnement Premium",
+      arrow: true
+    }].map((s, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "setting",
+      onClick: () => s.arrow && showToast(`Ouvre ${s.lbl}`)
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "setting-l"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "setting-icon"
+    }, s.icon), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: 600
+      }
+    }, s.lbl)), s.toggle && /*#__PURE__*/React.createElement("div", {
+      className: `toggle ${s.on ? "" : "off"}`
+    }), s.arrow && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--dim)"
+      }
+    }, "\u203A"))))), /*#__PURE__*/React.createElement("div", {
+      className: "bottom-nav"
+    }, [{
+      id: "discover",
+      icon: "🔮",
+      lbl: "Découvrir"
+    }, {
+      id: "messages",
+      icon: "💬",
+      lbl: "Messages",
+      badge: 3
+    }, {
+      id: "premium",
+      icon: "👑",
+      lbl: "Premium"
+    }, {
+      id: "profile",
+      icon: "👤",
+      lbl: "Profil"
+    }].map(t => /*#__PURE__*/React.createElement("div", {
+      key: t.id,
+      className: `nav-item ${tab === t.id ? "active" : ""}`,
+      onClick: () => {
+        setTab(t.id);
+        if (t.id !== "messages") setOpenChat(null);
+      }
+    }, t.badge && tab !== "messages" && /*#__PURE__*/React.createElement("div", {
+      className: "nav-badge"
+    }, t.badge), /*#__PURE__*/React.createElement("div", {
+      className: "nav-icon"
+    }, t.icon), /*#__PURE__*/React.createElement("div", {
+      className: "nav-label"
+    }, t.lbl)))), recording && /*#__PURE__*/React.createElement("div", {
+      className: "recording-overlay"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "rec-pulse"
+    }, recording.type === "voice" ? "🎤" : "🎬"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-status"
+    }, recording.type === "voice" ? "Enregistrement vocal" : "Enregistrement vidéo"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-timer"
+    }, (10 - recording.elapsed).toFixed(1), "s"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-hint"
+    }, recording.type === "voice" ? "Présentez-vous en quelques mots…" : "Regardez la caméra et souriez…"), /*#__PURE__*/React.createElement("div", {
+      className: "rec-progress"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "rec-progress-fill",
+      style: {
+        width: `${recording.elapsed / 10 * 100}%`
+      }
+    })), /*#__PURE__*/React.createElement("button", {
+      className: "rec-stop",
+      onClick: () => stopRec()
+    }, "\u23F9 Arr\xEAter")), mediaPlayer && /*#__PURE__*/React.createElement("div", {
+      className: "media-overlay"
+    }, /*#__PURE__*/React.createElement("img", {
+      className: "media-avatar",
+      src: mediaPlayer.profile.photo,
+      alt: mediaPlayer.profile.name
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "media-name"
+    }, mediaPlayer.profile.name), /*#__PURE__*/React.createElement("div", {
+      className: "media-sub"
+    }, mediaPlayer.type === "voice" ? "🎤 Message vocal • 10 sec" : "🎬 Vidéo de présentation • 10 sec"), mediaPlayer.type === "voice" && /*#__PURE__*/React.createElement("div", {
+      className: "voice-player"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "voice-bars"
+    }, Array.from({
+      length: 28
+    }).map((_, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "vbar",
+      style: {
+        height: `${20 + Math.sin(i * 0.7) * 14 + Math.random() * 12}px`,
+        animationDelay: `${i * 0.04}s`,
+        animationPlayState: playing ? "running" : "paused",
+        opacity: playing ? 1 : 0.35
+      }
+    }))), /*#__PURE__*/React.createElement("div", {
+      className: "voice-controls"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "play-btn",
+      onClick: playing ? stopPlay : startPlay
+    }, playing ? "⏸" : "▶"), /*#__PURE__*/React.createElement("div", {
+      className: "voice-progress"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "voice-fill",
+      style: {
+        width: `${playProg}%`
+      }
+    })), /*#__PURE__*/React.createElement("span", {
+      className: "voice-time"
+    }, playing ? `${(playProg / 10).toFixed(1)}s` : "0:10"))), mediaPlayer.type === "video" && /*#__PURE__*/React.createElement("div", {
+      className: "video-player"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "video-placeholder"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "video-icon"
+    }, "\u25B6\uFE0F"), /*#__PURE__*/React.createElement("div", {
+      className: "video-label"
+    }, "VID\xC9O DE PR\xC9SENTATION"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "var(--muted)"
+      }
+    }, mediaPlayer.profile.name, " \u2022 10 secondes")), /*#__PURE__*/React.createElement("div", {
+      className: "video-duration"
+    }, "0:10")), /*#__PURE__*/React.createElement("button", {
+      className: "media-close",
+      onClick: () => {
+        setMediaPlayer(null);
+        stopPlay();
+      }
+    }, "Fermer")), showFilters && /*#__PURE__*/React.createElement("div", {
+      className: "filters-ov"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "filters-handle"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "filters-title"
+    }, "Affiner la recherche"), /*#__PURE__*/React.createElement("div", {
+      className: "filters-body"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fgroup"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flabel"
+    }, "Tranche d'\xE2ge"), /*#__PURE__*/React.createElement("div", {
+      className: "frank"
+    }, "18 \u2014 ", ageF, " ans"), /*#__PURE__*/React.createElement("input", {
+      className: "fslider",
+      type: "range",
+      min: 20,
+      max: 55,
+      value: ageF,
+      onChange: e => setAgeF(e.target.value)
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "fgroup"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flabel"
+    }, "Distance maximale"), /*#__PURE__*/React.createElement("div", {
+      className: "frank"
+    }, distF, " km"), /*#__PURE__*/React.createElement("input", {
+      className: "fslider",
+      type: "range",
+      min: 5,
+      max: 100,
+      value: distF,
+      onChange: e => setDistF(e.target.value)
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "fgroup"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flabel"
+    }, "Je cherche"), /*#__PURE__*/React.createElement("div", {
+      className: "fgrid"
+    }, ["Femmes", "Hommes", "Non-binaires", "Tout le monde"].map(g => /*#__PURE__*/React.createElement("div", {
+      key: g,
+      className: `foption ${genderF === g ? "active" : ""}`,
+      onClick: () => setGenderF(g)
+    }, g)))), /*#__PURE__*/React.createElement("div", {
+      className: "fgroup"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flabel"
+    }, "Centres d'int\xE9r\xEAt"), /*#__PURE__*/React.createElement("div", {
+      className: "finterests"
+    }, ["Art", "Cuisine", "Voyage", "Musique", "Sport", "Cinéma", "Lecture", "Gaming", "Nature", "Yoga"].map(i => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: `fibtn ${intF.includes(i) ? "active" : ""}`,
+      onClick: () => setIntF(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])
+    }, i)))), /*#__PURE__*/React.createElement("div", {
+      className: "fgroup"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flabel"
+    }, "M\xE9dias de pr\xE9sentation"), /*#__PURE__*/React.createElement("div", {
+      className: "fgrid"
+    }, ["Avec vocal 🎤", "Avec vidéo 🎬", "Avec photo", "Tous"].map(o => /*#__PURE__*/React.createElement("div", {
+      key: o,
+      className: `foption ${o === "Tous" ? "active" : ""}`
+    }, o))))), /*#__PURE__*/React.createElement("button", {
+      className: "filter-apply",
+      onClick: () => {
+        setShowFilters(false);
+        showToast("✅ Filtres appliqués");
+      }
+    }, "Appliquer les filtres")), showMatch && matchedProfile && /*#__PURE__*/React.createElement("div", {
+      className: "match-popup"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "match-emoji"
+    }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("div", {
+      className: "match-title"
+    }, "C'est un Match !"), /*#__PURE__*/React.createElement("div", {
+      className: "match-sub"
+    }, "Toi et ", matchedProfile.name, " vous vous \xEAtes mutuellement plu \u2728"), /*#__PURE__*/React.createElement("div", {
+      className: "match-photos"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "match-me"
+    }, "\uD83D\uDE0A"), /*#__PURE__*/React.createElement("div", {
+      className: "match-hearts"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "match-heart"
+    }, "\uD83D\uDC95"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "var(--muted)"
+      }
+    }, "match")), /*#__PURE__*/React.createElement("img", {
+      className: "match-ph",
+      src: matchedProfile.photo,
+      alt: matchedProfile.name
+    })), /*#__PURE__*/React.createElement("button", {
+      className: "match-btn match-btn-p",
+      onClick: () => {
+        setShowMatch(false);
+        setTab("messages");
+        setOpenChat(msgs[0]);
+      }
+    }, "\uD83D\uDCAC Envoyer un message"), /*#__PURE__*/React.createElement("button", {
+      className: "match-btn match-btn-s",
+      onClick: () => setShowMatch(false)
+    }, "Continuer \xE0 explorer")), toast && /*#__PURE__*/React.createElement("div", {
+      className: "toast"
+    }, toast))));
+  }
+  window.AuraApp = AuraApp;
+})();
   </script>
   <script>
     ReactDOM.createRoot(document.getElementById('root')).render(
