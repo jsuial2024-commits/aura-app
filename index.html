@@ -167,6 +167,21 @@
       });
       return r.json();
     },
+    async upsert(table, data) {
+      const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: "POST",
+        headers: {
+          ...this._headers,
+          "Authorization": `Bearer ${token}`,
+          "Prefer": "resolution=merge-duplicates,return=representation"
+        },
+        body: JSON.stringify(data)
+      });
+      const txt = await r.text();
+      if (!r.ok) throw new Error(`${r.status}: ${txt}`);
+      return txt ? JSON.parse(txt) : [];
+    },
     // Realtime (polling simplifié)
     subscribe(table, callback, intervalMs = 3000) {
       const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
@@ -1254,14 +1269,20 @@ body{
         if (r.ok) {
           const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`;
           setAvatarUrl(url);
-          await supabase.update("profiles", {
-            avatar_url: url
-          }, `?id=eq.${currentUser.id}`);
-          showToast("Photo mise à jour ✓");
+          try {
+            await supabase.upsert("profiles", {
+              id: currentUser.id,
+              avatar_url: url
+            });
+            showToast("Photo mise à jour ✓");
+          } catch (e2) {
+            console.error("Photo DB save error:", e2);
+            showToast("Photo visible ✓ (sync DB échouée)");
+          }
         } else {
-          // Photo visible localement même si upload échoue
-          showToast("Photo locale ✓ (sync échouée)");
-          console.error("Upload error:", JSON.stringify(data));
+          const errTxt = await r.text().catch(() => "");
+          console.error("Storage upload failed:", r.status, errTxt);
+          showToast("❌ Upload échoué (" + r.status + ")");
         }
       } catch (e) {
         showToast("Photo locale ✓");
@@ -1293,9 +1314,10 @@ body{
         if (r.ok && currentUser) {
           const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`;
           setCoverUrl(url);
-          await supabase.update("profiles", {
+          await supabase.upsert("profiles", {
+            id: currentUser.id,
             cover_url: url
-          }, `?id=eq.${currentUser.id}`);
+          });
         }
       } catch (e) {
         console.error("Cover upload:", e);
@@ -1304,18 +1326,19 @@ body{
     async function saveProfile() {
       if (!currentUser) return;
       try {
-        await supabase.update("profiles", {
-          name: profileName,
+        await supabase.upsert("profiles", {
+          id: currentUser.id,
+          name: profileName || "Membre",
           age: parseInt(profileAge) || null,
-          city: profileCity,
-          bio: profileBio,
-          job: profileJob
-        }, `?id=eq.${currentUser.id}`);
+          city: profileCity || null,
+          bio: profileBio || null,
+          job: profileJob || null
+        });
         showToast("Profil mis à jour ✓");
         setEditingProfile(false);
       } catch (e) {
         console.error("saveProfile error:", e);
-        showToast("Erreur: " + (e.message || JSON.stringify(e)));
+        showToast("Erreur sauvegarde: " + (e.message || "inconnue"));
       }
     }
 
