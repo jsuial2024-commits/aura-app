@@ -1279,7 +1279,7 @@ body{
         const token = localStorage.getItem("aura_token");
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${currentUser.id}/cover.${ext}`;
-        await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+        const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
           method: "POST",
           headers: {
             "apikey": SUPABASE_KEY,
@@ -1289,6 +1289,13 @@ body{
           },
           body: file
         });
+        if (r.ok && currentUser) {
+          const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`;
+          setCoverUrl(url);
+          await supabase.update("profiles", {
+            cover_url: url
+          }, `id=eq.${currentUser.id}`);
+        }
       } catch (e) {
         console.error("Cover upload:", e);
       }
@@ -1311,6 +1318,23 @@ body{
     }
 
     // BG crossfade cycling
+    async function loadMyProfile(userId) {
+      try {
+        const data = await supabase.select("profiles", `?id=eq.${userId}`);
+        if (Array.isArray(data) && data[0]) {
+          const p = data[0];
+          if (p.name) setProfileName(p.name);
+          if (p.age) setProfileAge(String(p.age));
+          if (p.city) setProfileCity(p.city);
+          if (p.bio) setProfileBio(p.bio);
+          if (p.job) setProfileJob(p.job);
+          if (p.photo_url) setAvatarUrl(p.photo_url);
+          if (p.cover_url) setCoverUrl(p.cover_url);
+        }
+      } catch (e) {
+        console.error("loadMyProfile:", e);
+      }
+    }
     async function loadProfiles() {
       try {
         const userId = supabase.auth.getUserId();
@@ -1402,6 +1426,7 @@ body{
               setCurrentUser({
                 id: login.user?.id
               });
+              await loadMyProfile(login.user?.id);
               await loadProfiles();
               setScreen("app");
             } else {
@@ -1418,7 +1443,9 @@ body{
             setCurrentUser({
               id: res.user?.id
             });
+            await loadMyProfile(res.user?.id);
             await loadProfiles();
+            loadMatches();
             setScreen("app");
           } else {
             setAuthError(res.error?.message || res.error_description || res.msg || "Email ou mot de passe incorrect. Verifie tes identifiants.");
@@ -1435,10 +1462,13 @@ body{
     useEffect(() => {
       const timer = setTimeout(() => {
         if (supabase.auth.isLoggedIn()) {
+          const uid3 = supabase.auth.getUserId();
           setCurrentUser({
-            id: supabase.auth.getUserId()
+            id: uid3
           });
+          loadMyProfile(uid3);
           loadProfiles();
+          loadMatches();
           setScreen("app");
         } else {
           setScreen("auth");
