@@ -1256,7 +1256,7 @@ body{
           setAvatarUrl(url);
           await supabase.update("profiles", {
             avatar_url: url
-          }, `id=eq.${currentUser.id}`);
+          }, `?id=eq.${currentUser.id}`);
           showToast("Photo mise à jour ✓");
         } else {
           // Photo visible localement même si upload échoue
@@ -1295,7 +1295,7 @@ body{
           setCoverUrl(url);
           await supabase.update("profiles", {
             cover_url: url
-          }, `id=eq.${currentUser.id}`);
+          }, `?id=eq.${currentUser.id}`);
         }
       } catch (e) {
         console.error("Cover upload:", e);
@@ -1310,11 +1310,12 @@ body{
           city: profileCity,
           bio: profileBio,
           job: profileJob
-        }, `id=eq.${currentUser.id}`);
+        }, `?id=eq.${currentUser.id}`);
         showToast("Profil mis à jour ✓");
         setEditingProfile(false);
       } catch (e) {
-        showToast("Erreur: " + e.message);
+        console.error("saveProfile error:", e);
+        showToast("Erreur: " + (e.message || JSON.stringify(e)));
       }
     }
 
