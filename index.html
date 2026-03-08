@@ -1963,10 +1963,10 @@ body{
       className: "splash-divider"
     }), /*#__PURE__*/React.createElement("button", {
       className: "btn-primary",
-      onClick: () => setScreen("app")
+      onClick: () => setScreen("auth")
     }, "Commencer gratuitement \u2726"), /*#__PURE__*/React.createElement("button", {
       className: "btn-ghost",
-      onClick: () => setScreen("app")
+      onClick: () => { setScreen("auth"); setAuthMode("login"); }
     }, "J'ai d\xE9j\xE0 un compte"), /*#__PURE__*/React.createElement("div", {
       className: "splash-footnote"
     }, "2 millions de membres \xB7 150 000 couples form\xE9s"))), screen === "app" && /*#__PURE__*/React.createElement("div", {
