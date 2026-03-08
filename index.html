@@ -1193,6 +1193,7 @@ body{
     const [mediaPlayer, setMediaPlayer] = useState(null);
     const [openChat, setOpenChat] = useState(null);
     const [msgs, setMsgs] = useState(MESSAGES_DATA);
+    const [dbMatches, setDbMatches] = useState([]);
     const [chatInput, setChatInput] = useState("");
     const [toast, setToast] = useState(null);
     const [genderF, setGenderF] = useState("Femmes");
@@ -1313,9 +1314,13 @@ body{
     async function loadProfiles() {
       try {
         const userId = supabase.auth.getUserId();
+        // Fetch profiles already swiped to exclude them
+        const swipedData = await supabase.select("swipes", "?swiper_id=eq." + userId + "&select=swiped_id");
+        const swipedIds = Array.isArray(swipedData) ? swipedData.map(s => s.swiped_id) : [];
         const data = await supabase.select("profiles", "?id=neq." + userId + "&limit=20&order=created_at.desc");
-        if (Array.isArray(data) && data.length > 0) {
-          setDbProfiles(data.map(p => ({
+        const filtered = Array.isArray(data) ? data.filter(p => !swipedIds.includes(p.id)) : data;
+        if (Array.isArray(filtered) && filtered.length > 0) {
+          setDbProfiles(filtered.map(p => ({
             id: p.id,
             name: p.name || "Membre",
             age: p.age || 25,
@@ -1334,6 +1339,42 @@ body{
         }
       } catch (e) {
         console.log(e);
+      }
+    }
+    async function loadMatches() {
+      if (!currentUser) return;
+      try {
+        const uid = currentUser.id;
+        // Fetch matches where user is involved
+        const data = await supabase.select("matches", `?or=(user1_id.eq.${uid},user2_id.eq.${uid})&order=created_at.desc`);
+        if (!Array.isArray(data)) return;
+        // For each match, fetch the other user's profile
+        const enriched = await Promise.all(data.map(async m => {
+          const otherId = m.user1_id === uid ? m.user2_id : m.user1_id;
+          const profiles = await supabase.select("profiles", `?id=eq.${otherId}`);
+          const p = Array.isArray(profiles) && profiles[0];
+          return {
+            matchId: m.id,
+            id: otherId,
+            name: p?.name || "Membre",
+            age: p?.age || "",
+            photo: p?.photo_url || null,
+            online: Math.random() > 0.5,
+            lastMsg: "",
+            unread: 0,
+            chat: [],
+            createdAt: m.created_at
+          };
+        }));
+        setDbMatches(enriched);
+        // Merge into msgs state for chat
+        setMsgs(prev => {
+          const existingIds = new Set(enriched.map(m => m.id));
+          const filtered = prev.filter(m => !existingIds.has(m.id));
+          return [...enriched, ...filtered];
+        });
+      } catch (e) {
+        console.error("loadMatches:", e);
       }
     }
     async function handleAuth() {
@@ -1481,25 +1522,60 @@ body{
         sy: 0
       });
     };
-    const doLike = () => {
-      if (!profiles.length) return;
+    const doLike = async () => {
+      if (!profiles.length || !currentUser) return;
       const p = profiles[0];
-      if (Math.random() > 0.38) {
-        setMatchedProfile(p);
-        setShowMatch(true);
-      } else showToast("💛 Tu as liké " + p.name);
+      // Retire le profil immédiatement pour fluidité
       setProfiles(prev => prev.slice(1));
       setBgIdx(i => (i + 1) % BG_SCENES.length);
+      try {
+        await supabase.insert("swipes", {
+          swiper_id: currentUser.id,
+          swiped_id: p.id,
+          direction: "like"
+        });
+        // Vérifier si match mutuel
+        const existing = await supabase.select("swipes", `?swiper_id=eq.${p.id}&swiped_id=eq.${currentUser.id}&direction=eq.like`);
+        if (Array.isArray(existing) && existing.length > 0) {
+          // C'est un match !
+          setMatchedProfile(p);
+          setShowMatch(true);
+          // Créer le match en DB (le trigger le fait aussi, mais on force)
+          try {
+            await supabase.insert("matches", {
+              user1_id: currentUser.id < p.id ? currentUser.id : p.id,
+              user2_id: currentUser.id < p.id ? p.id : currentUser.id
+            });
+          } catch (e) {/* ignore duplicate */}
+          loadMatches();
+        } else {
+          showToast("💛 Tu as liké " + p.name);
+        }
+      } catch (e) {
+        if (e.message && e.message.includes("duplicate")) {
+          // Déjà swiké
+        } else {
+          showToast("💛 Tu as liké " + p.name);
+        }
+      }
     };
-    const doPass = () => {
-      if (!profiles.length) return;
+    const doPass = async () => {
+      if (!profiles.length || !currentUser) return;
+      const p = profiles[0];
       setProfiles(prev => prev.slice(1));
       setBgIdx(i => (i + 1) % BG_SCENES.length);
       showToast("👋 Profil passé");
+      try {
+        await supabase.insert("swipes", {
+          swiper_id: currentUser.id,
+          swiped_id: p.id,
+          direction: "pass"
+        });
+      } catch (e) {/* ignore */}
     };
     const doUndo = () => {
-      setProfiles(PROFILES);
-      showToast("↩ Retour au début");
+      loadProfiles();
+      showToast("↩ Rechargement");
     };
 
     // ── Recording ──
@@ -2002,18 +2078,36 @@ body{
       className: "icon-btn"
     }, "\u270F\uFE0F")), /*#__PURE__*/React.createElement("div", {
       className: "stories"
-    }, (dbProfiles.length > 0 ? dbProfiles : PROFILES).map(p => /*#__PURE__*/React.createElement("div", {
+    }, dbMatches.length === 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "var(--muted)",
+        fontSize: 13,
+        padding: "8px 4px",
+        opacity: 0.7
+      }
+    }, "Tes matchs appara\xEEtront ici \u2728"), dbMatches.map(p => /*#__PURE__*/React.createElement("div", {
       key: p.id,
       className: "story",
-      onClick: () => showToast(`Story de ${p.name}`)
+      onClick: () => setOpenChat(p)
     }, /*#__PURE__*/React.createElement("div", {
       className: "story-ring"
     }, /*#__PURE__*/React.createElement("div", {
       className: "story-inner"
-    }, /*#__PURE__*/React.createElement("img", {
+    }, p.photo ? /*#__PURE__*/React.createElement("img", {
       src: p.photo,
       alt: p.name
-    }))), /*#__PURE__*/React.createElement("span", {
+    }) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 20,
+        color: "white"
+      }
+    }, p.name[0]))), /*#__PURE__*/React.createElement("span", {
       className: "story-name"
     }, p.name)))), /*#__PURE__*/React.createElement("div", {
       className: "conv-list"
