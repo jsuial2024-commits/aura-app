@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, touch-action=none"/>
   <title>Aura</title>
   <link rel="manifest" href="/manifest.json"/>
   <meta name="theme-color" content="#E8647A"/>
@@ -11,8 +11,8 @@
   <meta name="apple-mobile-web-app-title" content="Aura"/>
   <link rel="apple-touch-icon" href="/icon-192.png"/>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { width:100%; height:100vh; height:100dvh; background:#0a0a0a; overflow:hidden; }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html, body { width:100%; height:100vh; height:100dvh; background:#0a0a0a; overflow:hidden; touch-action:none; }
     #root { width:100%; height:100%; }
   </style>
 </head>
@@ -359,7 +359,7 @@ body{
   transition:transform .15s;
 }
 .nav-item:active{transform:scale(.88);}
-.nav-icon{font-size:23px;transition:transform .2s;}
+.nav-icon{font-size:23px;transition:transform .2s;line-height:1;}
 .nav-label{font-size:10px;font-weight:600;color:var(--dim);
   transition:color .2s;letter-spacing:.6px;text-transform:uppercase;}
 .nav-item.active .nav-label{color:var(--rose);}
@@ -1387,6 +1387,38 @@ body{
         sy: 0
       });
     };
+    // Touch support for mobile swipe
+    const onTD = e => {
+      const t = e.touches[0];
+      setDrag({
+        on: true,
+        x: 0,
+        y: 0,
+        sx: t.clientX,
+        sy: t.clientY
+      });
+    };
+    const onTM = e => {
+      if (!drag.on) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      setDrag(d => ({
+        ...d,
+        x: t.clientX - d.sx,
+        y: t.clientY - d.sy
+      }));
+    };
+    const onTU = () => {
+      if (!drag.on) return;
+      if (drag.x > 85) doLike();else if (drag.x < -85) doPass();
+      setDrag({
+        on: false,
+        x: 0,
+        y: 0,
+        sx: 0,
+        sy: 0
+      });
+    };
     const doLike = () => {
       if (!profiles.length) return;
       const p = profiles[0];
@@ -1678,7 +1710,7 @@ body{
       className: "splash-pills"
     }, /*#__PURE__*/React.createElement("div", {
       className: "splash-pill"
-    }, "\uD83D\uDD2E Matching IA"), /*#__PURE__*/React.createElement("div", {
+    }, "\u2728 Matching IA"), /*#__PURE__*/React.createElement("div", {
       className: "splash-pill"
     }, "\uD83C\uDFA4 Message vocal"), /*#__PURE__*/React.createElement("div", {
       className: "splash-pill"
@@ -1722,7 +1754,10 @@ body{
       className: "card-stack",
       onMouseMove: onMM,
       onMouseUp: onMU,
-      onMouseLeave: onMU
+      onMouseLeave: onMU,
+      onTouchStart: onTD,
+      onTouchMove: onTM,
+      onTouchEnd: onTU
     }, nn && /*#__PURE__*/React.createElement("div", {
       className: "pcard bcard2",
       style: {
@@ -1749,7 +1784,8 @@ body{
         backgroundPosition: "center",
         ...cardStyle
       },
-      onMouseDown: onMD
+      onMouseDown: onMD,
+      onTouchStart: onTD
     }, /*#__PURE__*/React.createElement("div", {
       className: "pcard-grad"
     }), /*#__PURE__*/React.createElement("div", {
@@ -2119,7 +2155,7 @@ body{
       className: "bottom-nav"
     }, [{
       id: "discover",
-      icon: "🔮",
+      icon: "✦",
       lbl: "Découvrir"
     }, {
       id: "messages",
