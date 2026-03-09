@@ -1210,6 +1210,8 @@ body{
     const [openChat, setOpenChat] = useState(null);
     const [msgs, setMsgs] = useState(MESSAGES_DATA);
     const [dbMatches, setDbMatches] = useState([]);
+    const [newLikes, setNewLikes] = useState(0);
+    const [lastLikeCheck, setLastLikeCheck] = useState(new Date().toISOString());
     const [chatInput, setChatInput] = useState("");
     const [toast, setToast] = useState(null);
     const [genderF, setGenderF] = useState("Femmes");
@@ -1253,20 +1255,32 @@ body{
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${currentUser.id}/avatar.${ext}`;
 
-        // Upload fichier brut (pas FormData) — plus fiable sur mobile
+        // Upload avec upsert (POST + x-upsert pour créer ou remplacer)
         const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
           method: "POST",
           headers: {
             "apikey": SUPABASE_KEY,
             "Authorization": `Bearer ${token}`,
             "Content-Type": file.type || "image/jpeg",
-            "x-upsert": "true",
-            "cache-control": "3600"
+            "x-upsert": "true"
           },
           body: file
         });
+        // Si POST échoue (fichier existe), essayer PUT
+        let finalR = r;
+        if (!r.ok && r.status !== 200) {
+          finalR = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+            method: "PUT",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": file.type || "image/jpeg"
+            },
+            body: file
+          });
+        }
         const data = await r.json().catch(() => ({}));
-        if (r.ok) {
+        if (finalR.ok) {
           const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`;
           setAvatarUrl(url);
           try {
@@ -1280,9 +1294,9 @@ body{
             showToast("Photo visible ✓ (sync DB échouée)");
           }
         } else {
-          const errTxt = await r.text().catch(() => "");
-          console.error("Storage upload failed:", r.status, errTxt);
-          showToast("❌ Upload échoué (" + r.status + ")");
+          const errTxt = await finalR.text().catch(() => "");
+          console.error("Storage upload failed:", finalR.status, errTxt);
+          showToast("❌ Upload échoué (" + finalR.status + ")");
         }
       } catch (e) {
         showToast("Photo locale ✓");
@@ -1367,7 +1381,7 @@ body{
         const swipedData = await supabase.select("swipes", "?swiper_id=eq." + userId + "&select=swiped_id");
         const swipedIds = Array.isArray(swipedData) ? swipedData.map(s => s.swiped_id) : [];
         const data = await supabase.select("profiles", "?id=neq." + userId + "&limit=20&order=created_at.desc");
-        const filtered = Array.isArray(data) ? data.filter(p => !swipedIds.includes(p.id)) : data;
+        const filtered = Array.isArray(data) ? data.filter(p => p.id !== userId && !swipedIds.includes(p.id)) : data;
         const mapped = Array.isArray(filtered) ? filtered.map(p => ({
           id: p.id,
           name: p.name || "Membre",
@@ -1507,6 +1521,26 @@ body{
       }, 2200);
       return () => clearTimeout(timer);
     }, []);
+
+    // Polling: vérifie les nouveaux likes toutes les 30s
+    useEffect(() => {
+      if (!currentUser) return;
+      const poll = setInterval(async () => {
+        try {
+          const uid = currentUser.id;
+          // Cherche les likes reçus depuis le dernier check
+          const likes = await supabase.select("swipes", `?swiped_id=eq.${uid}&direction=eq.like&created_at=gt.${lastLikeCheck}`);
+          if (Array.isArray(likes) && likes.length > 0) {
+            setNewLikes(n => n + likes.length);
+            setLastLikeCheck(new Date().toISOString());
+            showToast(`💛 ${likes.length > 1 ? likes.length + " personnes vous ont liké !" : "Quelqu'un vous a liké !"}`);
+          }
+          // Recharge aussi les matchs
+          loadMatches();
+        } catch (e) {}
+      }, 30000);
+      return () => clearInterval(poll);
+    }, [currentUser, lastLikeCheck]);
     useEffect(() => {
       const t = setInterval(() => {
         const next = (bgIdx + 1) % BG_SCENES.length;
@@ -2635,7 +2669,8 @@ body{
     }, [{
       id: "discover",
       icon: "✦",
-      lbl: "Découvrir"
+      lbl: "Découvrir",
+      likeBadge: newLikes
     }, {
       id: "messages",
       icon: "💬",
@@ -2655,10 +2690,16 @@ body{
       onClick: () => {
         setTab(t.id);
         if (t.id !== "messages") setOpenChat(null);
+        if (t.id === "discover") setNewLikes(0);
       }
     }, t.badge && tab !== "messages" && /*#__PURE__*/React.createElement("div", {
       className: "nav-badge"
-    }, t.badge), /*#__PURE__*/React.createElement("div", {
+    }, t.badge), t.likeBadge > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "nav-badge",
+      style: {
+        background: "#E8A050"
+      }
+    }, t.likeBadge), /*#__PURE__*/React.createElement("div", {
       className: "nav-icon"
     }, t.icon), /*#__PURE__*/React.createElement("div", {
       className: "nav-label"
