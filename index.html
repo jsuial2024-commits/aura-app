@@ -1296,7 +1296,7 @@ body{
         } else {
           const errTxt = await finalR.text().catch(() => "");
           console.error("Storage upload failed:", finalR.status, errTxt);
-          showToast("❌ Upload échoué (" + finalR.status + ")");
+          showToast("❌ Upload échoué (" + finalR.status + ") - " + errTxt.slice(0, 60));
         }
       } catch (e) {
         showToast("Photo locale ✓");
@@ -1314,7 +1314,7 @@ body{
       try {
         const token = localStorage.getItem("aura_token");
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${currentUser.id}/cover.${ext}`;
+        const path = `${currentUser.id}/cover_${Date.now()}.${ext}`;
         const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
           method: "POST",
           headers: {
