@@ -1286,7 +1286,7 @@ body{
           try {
             await supabase.upsert("profiles", {
               id: currentUser.id,
-              avatar_url: url
+              photo_url: url
             });
             showToast("Photo mise à jour ✓");
           } catch (e2) {
