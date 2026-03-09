@@ -1212,6 +1212,9 @@ body{
     const [mediaPlayer, setMediaPlayer] = useState(null);
     const [openChat, setOpenChat] = useState(null);
     const [msgs, setMsgs] = useState(MESSAGES_DATA);
+    const [realMsgs, setRealMsgs] = useState([]);
+    const [chatLoading, setChatLoading] = useState(false);
+    const [viewProfile, setViewProfile] = useState(null);
     const [dbMatches, setDbMatches] = useState([]);
     const [newLikes, setNewLikes] = useState(0);
     const [lastLikeCheck, setLastLikeCheck] = useState(new Date().toISOString());
@@ -1451,6 +1454,45 @@ body{
         console.log(e);
       }
     }
+    async function loadMessages(matchId) {
+      if (!matchId) return;
+      setChatLoading(true);
+      try {
+        const token = localStorage.getItem("aura_token");
+        const data = await supabase.select("messages", `?match_id=eq.${matchId}&order=created_at.asc&limit=100`);
+        if (Array.isArray(data)) setRealMsgs(data);
+      } catch (e) {
+        console.error("loadMessages:", e);
+      }
+      setChatLoading(false);
+    }
+    async function sendRealMsg(matchId, text) {
+      if (!matchId || !text.trim() || !currentUser) return;
+      try {
+        const token = localStorage.getItem("aura_token");
+        const msg = {
+          match_id: matchId,
+          sender_id: currentUser.id,
+          content: text.trim()
+        };
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/messages`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+          },
+          body: JSON.stringify(msg)
+        });
+        const saved = await r.json().catch(() => null);
+        if (r.ok && saved) {
+          setRealMsgs(prev => [...prev, Array.isArray(saved) ? saved[0] : saved]);
+        }
+      } catch (e) {
+        console.error("sendRealMsg:", e);
+      }
+    }
     async function loadMatches() {
       if (!currentUser) return;
       try {
@@ -1468,7 +1510,12 @@ body{
             id: otherId,
             name: p?.name || "Membre",
             age: p?.age || "",
+            city: p?.city || "",
+            bio: p?.bio || "",
+            job: p?.job || "",
             photo: p?.photo_url || null,
+            voice_url: p?.voice_url || null,
+            video_url: p?.video_url || null,
             online: Math.random() > 0.5,
             lastMsg: "",
             unread: 0,
@@ -1562,6 +1609,13 @@ body{
       }, 2200);
       return () => clearTimeout(timer);
     }, []);
+
+    // Polling messages en chat toutes les 5s
+    useEffect(() => {
+      if (!openChat?.matchId) return;
+      const t = setInterval(() => loadMessages(openChat.matchId), 5000);
+      return () => clearInterval(t);
+    }, [openChat]);
 
     // Polling: vérifie les nouveaux likes toutes les 30s
     useEffect(() => {
@@ -1824,17 +1878,9 @@ body{
     // ── Chat ──
     const sendMsg = () => {
       if (!chatInput.trim() || !openChat) return;
-      setMsgs(prev => prev.map(c => c.id === openChat.id ? {
-        ...c,
-        chat: [...c.chat, {
-          from: "me",
-          text: chatInput,
-          time: "Maintenant"
-        }],
-        lastMsg: chatInput,
-        unread: 0
-      } : c));
+      const txt = chatInput;
       setChatInput("");
+      sendRealMsg(openChat.matchId, txt);
     };
     const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
     const shownProfiles = onlineOnly ? profiles.filter(p => p.online) : profiles;
@@ -2171,14 +2217,55 @@ body{
     }, "\uD83C\uDFAC Vid\xE9o 10s")), /*#__PURE__*/React.createElement("div", {
       className: "pcard-body"
     }, /*#__PURE__*/React.createElement("div", {
-      className: "pcard-name-row"
+      className: "pcard-name-row",
+      onClick: () => setViewProfile(cur),
+      style: {
+        cursor: "pointer"
+      }
     }, /*#__PURE__*/React.createElement("div", {
       className: "pcard-name"
     }, cur.name), /*#__PURE__*/React.createElement("div", {
       className: "pcard-age"
-    }, cur.age)), /*#__PURE__*/React.createElement("div", {
+    }, cur.age), /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: "auto",
+        fontSize: 18,
+        opacity: 0.7
+      }
+    }, "\u24D8")), /*#__PURE__*/React.createElement("div", {
       className: "pcard-job"
     }, "\uD83D\uDCBC ", cur.job, " \xB7 ", cur.city), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginTop: 6,
+        alignItems: "center"
+      }
+    }, cur.hasVoice && /*#__PURE__*/React.createElement("div", {
+      onClick: () => setViewProfile({
+        ...cur,
+        playVoice: true
+      }),
+      style: {
+        background: "rgba(255,255,255,0.15)",
+        borderRadius: 20,
+        padding: "4px 12px",
+        fontSize: 12,
+        cursor: "pointer"
+      }
+    }, "\uD83C\uDFB5 \xC9couter"), cur.hasVideo && /*#__PURE__*/React.createElement("div", {
+      onClick: () => setViewProfile({
+        ...cur,
+        playVideo: true
+      }),
+      style: {
+        background: "rgba(255,255,255,0.15)",
+        borderRadius: 20,
+        padding: "4px 12px",
+        fontSize: 12,
+        cursor: "pointer"
+      }
+    }, "\u25B6 Vid\xE9o")), /*#__PURE__*/React.createElement("div", {
       className: "pcard-tags"
     }, cur.interests.map(t => /*#__PURE__*/React.createElement("span", {
       key: t,
@@ -2236,7 +2323,10 @@ body{
     }, "Tes matchs appara\xEEtront ici \u2728"), dbMatches.map(p => /*#__PURE__*/React.createElement("div", {
       key: p.id,
       className: "story",
-      onClick: () => setOpenChat(p)
+      onClick: () => {
+        setOpenChat(p);
+        loadMessages(p.matchId);
+      }
     }, /*#__PURE__*/React.createElement("div", {
       className: "story-ring"
     }, /*#__PURE__*/React.createElement("div", {
@@ -2289,13 +2379,24 @@ body{
       className: "chat-header"
     }, /*#__PURE__*/React.createElement("div", {
       className: "chat-back",
-      onClick: () => setOpenChat(null)
+      onClick: () => {
+        setOpenChat(null);
+        setRealMsgs([]);
+      }
     }, "\u2190"), /*#__PURE__*/React.createElement("img", {
       className: "chat-av",
       src: chatConv.photo,
-      alt: chatConv.name
+      alt: chatConv.name,
+      onClick: () => setViewProfile(chatConv),
+      style: {
+        cursor: "pointer"
+      }
     }), /*#__PURE__*/React.createElement("div", {
-      className: "chat-hinfo"
+      className: "chat-hinfo",
+      onClick: () => setViewProfile(chatConv),
+      style: {
+        cursor: "pointer"
+      }
     }, /*#__PURE__*/React.createElement("div", {
       className: "chat-hname"
     }, chatConv.name), /*#__PURE__*/React.createElement("div", {
@@ -2304,17 +2405,37 @@ body{
       className: "chat-hmore"
     }, "\u22EF")), /*#__PURE__*/React.createElement("div", {
       className: "chat-msgs"
-    }, chatConv.chat.map((m, i) => /*#__PURE__*/React.createElement("div", {
-      key: i
-    }, /*#__PURE__*/React.createElement("div", {
-      className: `msg-row ${m.from}`
-    }, /*#__PURE__*/React.createElement("div", {
-      className: `bubble ${m.from}`
-    }, m.text)), /*#__PURE__*/React.createElement("div", {
-      className: `msg-row ${m.from}`
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "btime"
-    }, m.time))))), /*#__PURE__*/React.createElement("div", {
+    }, chatLoading && /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        color: "rgba(255,255,255,0.4)",
+        padding: 20
+      }
+    }, "Chargement..."), !chatLoading && realMsgs.length === 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        color: "rgba(255,255,255,0.4)",
+        padding: 20,
+        fontSize: 13
+      }
+    }, "Dis bonjour \xE0 ", openChat?.name, " ! \uD83D\uDC4B"), realMsgs.map((m, i) => {
+      const isMe = m.sender_id === currentUser?.id;
+      const t = new Date(m.created_at).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+      return /*#__PURE__*/React.createElement("div", {
+        key: m.id || i
+      }, /*#__PURE__*/React.createElement("div", {
+        className: `msg-row ${isMe ? "me" : "them"}`
+      }, /*#__PURE__*/React.createElement("div", {
+        className: `bubble ${isMe ? "me" : "them"}`
+      }, m.content)), /*#__PURE__*/React.createElement("div", {
+        className: `msg-row ${isMe ? "me" : "them"}`
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "btime"
+      }, t)));
+    })), /*#__PURE__*/React.createElement("div", {
       className: "chat-bar"
     }, /*#__PURE__*/React.createElement("textarea", {
       className: "chat-input",
@@ -3239,7 +3360,206 @@ body{
     }, "\uD83D\uDCAC Envoyer un message"), /*#__PURE__*/React.createElement("button", {
       className: "match-btn match-btn-s",
       onClick: () => setShowMatch(false)
-    }, "Continuer \xE0 explorer")), toast && /*#__PURE__*/React.createElement("div", {
+    }, "Continuer \xE0 explorer")), viewProfile && /*#__PURE__*/React.createElement("div", {
+      onClick: () => setViewProfile(null),
+      style: {
+        position: "absolute",
+        inset: 0,
+        zIndex: 100,
+        background: "rgba(0,0,0,0.85)",
+        display: "flex",
+        flexDirection: "column",
+        overflowY: "auto"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: e => e.stopPropagation(),
+      style: {
+        background: "linear-gradient(180deg,#0d1220 0%,#111828 100%)",
+        borderRadius: "32px 32px 0 0",
+        marginTop: "auto",
+        minHeight: "80vh",
+        display: "flex",
+        flexDirection: "column"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative",
+        height: 360,
+        flexShrink: 0
+      }
+    }, viewProfile.photo ? /*#__PURE__*/React.createElement("img", {
+      src: viewProfile.photo,
+      alt: viewProfile.name,
+      style: {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        borderRadius: "32px 32px 0 0"
+      }
+    }) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        borderRadius: "32px 32px 0 0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 72
+      }
+    }, viewProfile.name?.[0]), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        inset: 0,
+        background: "linear-gradient(transparent 50%,#0d1220 100%)",
+        borderRadius: "32px 32px 0 0"
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      onClick: () => setViewProfile(null),
+      style: {
+        position: "absolute",
+        top: 16,
+        right: 16,
+        width: 36,
+        height: 36,
+        background: "rgba(0,0,0,0.5)",
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        fontSize: 18,
+        color: "#fff"
+      }
+    }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        bottom: 16,
+        left: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 26,
+        fontWeight: 700,
+        color: "#fff"
+      }
+    }, viewProfile.name, ", ", viewProfile.age), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: "rgba(255,255,255,0.7)"
+      }
+    }, viewProfile.job, " \xB7 ", viewProfile.city))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "20px 20px 0"
+      }
+    }, viewProfile.bio && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.05)",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "rgba(255,255,255,0.4)",
+        marginBottom: 6,
+        fontWeight: 600,
+        letterSpacing: 1
+      }
+    }, "\xC0 PROPOS"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: "rgba(255,255,255,0.85)",
+        lineHeight: 1.6
+      }
+    }, viewProfile.bio)), (viewProfile.voice_url || viewProfile.hasVoice) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.05)",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "rgba(255,255,255,0.4)",
+        marginBottom: 10,
+        fontWeight: 600,
+        letterSpacing: 1
+      }
+    }, "PR\xC9SENTATION VOCALE"), /*#__PURE__*/React.createElement("audio", {
+      controls: true,
+      src: viewProfile.voice_url,
+      style: {
+        width: "100%",
+        height: 40
+      }
+    })), (viewProfile.video_url || viewProfile.hasVideo) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.05)",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "rgba(255,255,255,0.4)",
+        marginBottom: 10,
+        fontWeight: 600,
+        letterSpacing: 1
+      }
+    }, "PR\xC9SENTATION VID\xC9O"), /*#__PURE__*/React.createElement("video", {
+      controls: true,
+      src: viewProfile.video_url,
+      style: {
+        width: "100%",
+        borderRadius: 12,
+        maxHeight: 200
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        padding: "16px 0 32px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        doPass();
+        setViewProfile(null);
+      },
+      style: {
+        flex: 1,
+        height: 52,
+        background: "rgba(255,255,255,0.08)",
+        borderRadius: 26,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 24,
+        cursor: "pointer"
+      }
+    }, "\uD83D\uDC4E"), /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        doLike();
+        setViewProfile(null);
+      },
+      style: {
+        flex: 2,
+        height: 52,
+        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        borderRadius: 26,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        cursor: "pointer",
+        fontSize: 16,
+        fontWeight: 700,
+        color: "#fff"
+      }
+    }, "\uD83D\uDC9B J'aime"))))), toast && /*#__PURE__*/React.createElement("div", {
       className: "toast"
     }, toast))));
   }
