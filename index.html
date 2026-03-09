@@ -1368,23 +1368,29 @@ body{
         const swipedIds = Array.isArray(swipedData) ? swipedData.map(s => s.swiped_id) : [];
         const data = await supabase.select("profiles", "?id=neq." + userId + "&limit=20&order=created_at.desc");
         const filtered = Array.isArray(data) ? data.filter(p => !swipedIds.includes(p.id)) : data;
-        if (Array.isArray(filtered) && filtered.length > 0) {
-          setDbProfiles(filtered.map(p => ({
-            id: p.id,
-            name: p.name || "Membre",
-            age: p.age || 25,
-            job: p.job || "AURA",
-            city: p.city || "Paris",
-            bio: p.bio || "Nouveau sur AURA",
-            distance: "? km",
-            interests: p.interests || ["Voyages"],
-            verified: p.verified || false,
-            premium: p.premium || false,
-            match: Math.floor(75 + Math.random() * 24),
-            hasVoice: !!p.voice_url,
-            hasVideo: !!p.video_url,
-            photo: p.photo_url || null
-          })));
+        const mapped = Array.isArray(filtered) ? filtered.map(p => ({
+          id: p.id,
+          name: p.name || "Membre",
+          age: p.age || 25,
+          job: p.job || "AURA",
+          city: p.city || "Paris",
+          bio: p.bio || "Nouveau sur AURA",
+          distance: "? km",
+          interests: p.interests || ["Voyages"],
+          verified: p.verified || false,
+          premium: p.premium || false,
+          match: Math.floor(75 + Math.random() * 24),
+          hasVoice: !!p.voice_url,
+          hasVideo: !!p.video_url,
+          photo: p.photo_url || null,
+          online: true
+        })) : [];
+        if (mapped.length > 0) {
+          setDbProfiles(mapped);
+          setProfiles(mapped); // ← connecte les vrais profils aux cartes de swipe
+        } else {
+          // Aucun profil réel → garder les démos
+          setProfiles(PROFILES);
         }
       } catch (e) {
         console.log(e);
@@ -1966,7 +1972,10 @@ body{
       onClick: () => setScreen("auth")
     }, "Commencer gratuitement \u2726"), /*#__PURE__*/React.createElement("button", {
       className: "btn-ghost",
-      onClick: () => { setScreen("auth"); setAuthMode("login"); }
+      onClick: () => {
+        setScreen("auth");
+        setAuthMode("login");
+      }
     }, "J'ai d\xE9j\xE0 un compte"), /*#__PURE__*/React.createElement("div", {
       className: "splash-footnote"
     }, "2 millions de membres \xB7 150 000 couples form\xE9s"))), screen === "app" && /*#__PURE__*/React.createElement("div", {
