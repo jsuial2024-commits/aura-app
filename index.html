@@ -1751,16 +1751,25 @@ body{
 
     // Polling messages en chat toutes les 5s
     useEffect(() => {
+      activeMatchIdRef.current = openChat?.matchId || null;
       if (!openChat?.matchId) return;
-      const t = setInterval(() => loadMessages(openChat.matchId), 5000);
-      return () => clearInterval(t);
-    }, [openChat]);
+      loadMessages(openChat.matchId); // load immediately on open
+      const t = setInterval(() => {
+        if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
+      }, 5000);
+      return () => {
+        clearInterval(t);
+      };
+    }, [openChat?.matchId]);
 
     // Polling: vérifie les nouveaux likes toutes les 30s
     const likeCheckRef = React.useRef(new Date().toISOString());
+    const activeMatchIdRef = React.useRef(null);
     useEffect(() => {
       if (!currentUser) return;
       const poll = setInterval(async () => {
+        // Skip heavy polling when user is actively chatting
+        if (activeMatchIdRef.current) return;
         try {
           const uid = currentUser.id;
           const since = likeCheckRef.current;
@@ -2020,10 +2029,11 @@ body{
 
     // ── Chat ──
     const sendMsg = () => {
-      if (!chatInput.trim() || !openChat) return;
+      const matchId = activeMatchIdRef.current;
+      if (!chatInput.trim() || !matchId) return;
       const txt = chatInput;
       setChatInput("");
-      sendRealMsg(openChat.matchId, txt);
+      sendRealMsg(matchId, txt);
     };
     const chatConv = openChat || null;
     const shownProfiles = onlineOnly ? profiles.filter(p => p.online) : profiles;
@@ -2552,12 +2562,14 @@ body{
         setRealMsgs([]);
       }
     }, "\u2190"), /*#__PURE__*/React.createElement("img", {
+      key: chatConv.id,
       className: "chat-av",
-      src: chatConv.photo,
+      src: chatConv.photo || "",
       alt: chatConv.name,
       onClick: () => setViewProfile(chatConv),
       style: {
-        cursor: "pointer"
+        cursor: "pointer",
+        willChange: "transform"
       }
     }), /*#__PURE__*/React.createElement("div", {
       className: "chat-hinfo",
