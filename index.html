@@ -745,7 +745,7 @@ body{
 /* ─────────────────────────────────────────
    CHAT
 ───────────────────────────────────────── */
-.chat{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);z-index:10;}
+.chat{position:absolute;top:0;left:0;right:0;bottom:70px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);z-index:10;}
 .chat-header{
   padding:8px 18px 12px;
   display:flex;align-items:center;gap:12px;
@@ -782,8 +782,9 @@ body{
 .btime{font-size:10px;color:var(--dim);margin-top:3px;}
 .msg-row.me .btime{text-align:right;}
 .chat-bar{
-  padding:10px 14px 24px;display:flex;gap:10px;align-items:flex-end;
+  padding:10px 14px max(16px, env(safe-area-inset-bottom));display:flex;gap:10px;align-items:flex-end;
   border-top:1px solid var(--border);flex-shrink:0;
+  background:var(--bg);
 }
 .chat-input{
   flex:1;padding:13px 16px;
