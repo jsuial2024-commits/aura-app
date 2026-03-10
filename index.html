@@ -1778,6 +1778,8 @@ body{
       return () => clearInterval(poll);
     }, [currentUser]);
     useEffect(() => {
+      // Pause background animation when in chat or messages tab to avoid re-render flicker
+      if (openChat || tab === "messages") return;
       const t = setInterval(() => {
         const next = (bgIdx + 1) % BG_SCENES.length;
         setBgNext(next);
@@ -1788,7 +1790,7 @@ body{
         }, 1400);
       }, 7000);
       return () => clearInterval(t);
-    }, [bgIdx]);
+    }, [bgIdx, openChat, tab]);
     const showToast = msg => {
       setToast(msg);
       setTimeout(() => setToast(null), 2200);
