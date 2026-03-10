@@ -1664,11 +1664,14 @@ body{
           if (res.error) {
             setAuthError(res.error.message || res.msg || JSON.stringify(res.error));
           } else {
+            // Try auto-login after signup
             const login = await supabase.auth.signIn({
               email: authEmail,
               password: authPassword
             });
             if (login.access_token) {
+              localStorage.setItem("aura_token", login.access_token);
+              localStorage.setItem("aura_user_id", login.user?.id);
               setCurrentUser({
                 id: login.user?.id
               });
@@ -1676,7 +1679,8 @@ body{
               await loadProfiles();
               setScreen("app");
             } else {
-              setAuthError("Compte cree ! Connecte-toi.");
+              // Fallback: compte créé, connexion manuelle
+              setAuthError("Compte créé ! Connecte-toi maintenant.");
               setAuthMode("login");
             }
           }
@@ -1686,6 +1690,8 @@ body{
             password: authPassword
           });
           if (res.access_token) {
+            localStorage.setItem("aura_token", res.access_token);
+            localStorage.setItem("aura_user_id", res.user?.id);
             setCurrentUser({
               id: res.user?.id
             });
