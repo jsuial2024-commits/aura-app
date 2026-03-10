@@ -3635,12 +3635,33 @@ body{
       alt: matchedProfile.name
     })), /*#__PURE__*/React.createElement("button", {
       className: "match-btn match-btn-p",
-      onClick: () => {
+      onClick: async () => {
         setShowMatch(false);
         setTab("messages");
-        if (matchedProfile?.matchId) {
-          setOpenChat(matchedProfile);
-          loadMessages(matchedProfile.matchId);
+        // Cherche dans dbMatches par id du profil matché
+        let conv = dbMatches.find(m => m.id === matchedProfile?.id);
+        if (!conv) {
+          // Pas encore chargé — recharge et réessaie
+          await loadMatches();
+          conv = dbMatches.find(m => m.id === matchedProfile?.id);
+        }
+        if (!conv) {
+          // Fetch direct en DB
+          const uid = currentUser.id;
+          const pid = matchedProfile.id;
+          const u1 = uid < pid ? uid : pid;
+          const u2 = uid < pid ? pid : uid;
+          const rows = await supabase.select("matches", `?user1_id=eq.${u1}&user2_id=eq.${u2}&limit=1`);
+          if (Array.isArray(rows) && rows[0]) {
+            conv = {
+              ...matchedProfile,
+              matchId: rows[0].id
+            };
+          }
+        }
+        if (conv) {
+          setOpenChat(conv);
+          loadMessages(conv.matchId);
         }
       }
     }, "\uD83D\uDCAC Envoyer un message"), /*#__PURE__*/React.createElement("button", {
