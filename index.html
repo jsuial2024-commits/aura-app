@@ -1531,6 +1531,8 @@ body{
           match: Math.floor(75 + Math.random() * 24),
           hasVoice: !!p.voice_url,
           hasVideo: !!p.video_url,
+          voice_url: p.voice_url || null,
+          video_url: p.video_url || null,
           photo: p.photo_url || null,
           photos: p.photos_urls || (p.photo_url ? [p.photo_url] : []),
           online: true
@@ -1554,6 +1556,8 @@ body{
             match: Math.floor(75 + Math.random() * 24),
             hasVoice: !!p.voice_url,
             hasVideo: !!p.video_url,
+            voice_url: p.voice_url || null,
+            video_url: p.video_url || null,
             photo: p.photo_url || null,
             photos: p.photos_urls || (p.photo_url ? [p.photo_url] : []),
             online: true
@@ -1598,12 +1602,24 @@ body{
           },
           body: JSON.stringify(msg)
         });
-        const saved = await r.json().catch(() => null);
-        if (r.ok && saved) {
-          setRealMsgs(prev => [...prev, Array.isArray(saved) ? saved[0] : saved]);
+        const respTxt = await r.text();
+        console.log("sendMsg response:", r.status, respTxt);
+        if (r.ok) {
+          const saved = respTxt ? JSON.parse(respTxt) : null;
+          const newMsg = Array.isArray(saved) ? saved[0] : saved;
+          if (newMsg) {
+            setRealMsgs(prev => [...prev, newMsg]);
+          } else {
+            // Insert ok but no return — reload messages
+            setTimeout(() => loadMessages(matchId), 500);
+          }
+        } else {
+          console.error("sendMsg failed:", r.status, respTxt);
+          showToast("❌ Message non envoyé: " + r.status);
         }
       } catch (e) {
         console.error("sendRealMsg:", e);
+        showToast("❌ " + e.message.slice(0, 50));
       }
     }
     async function loadMatches() {
@@ -1737,24 +1753,26 @@ body{
     }, [openChat]);
 
     // Polling: vérifie les nouveaux likes toutes les 30s
+    const likeCheckRef = React.useRef(new Date().toISOString());
     useEffect(() => {
       if (!currentUser) return;
       const poll = setInterval(async () => {
         try {
           const uid = currentUser.id;
-          // Cherche les likes reçus depuis le dernier check
-          const likes = await supabase.select("swipes", `?swiped_id=eq.${uid}&direction=eq.like&created_at=gt.${lastLikeCheck}`);
+          const since = likeCheckRef.current;
+          const likes = await supabase.select("swipes", `?swiped_id=eq.${uid}&direction=eq.like&created_at=gt.${encodeURIComponent(since)}`);
           if (Array.isArray(likes) && likes.length > 0) {
             setNewLikes(n => n + likes.length);
-            setLastLikeCheck(new Date().toISOString());
-            showToast(`💛 ${likes.length > 1 ? likes.length + " personnes vous ont liké !" : "Quelqu'un vous a liké !"}`);
+            likeCheckRef.current = new Date().toISOString();
+            showToast(likes.length > 1 ? `💛 ${likes.length} personnes vous ont liké !` : "💛 Quelqu'un vous a liké !");
           }
-          // Recharge aussi les matchs
           loadMatches();
-        } catch (e) {}
-      }, 30000);
+        } catch (e) {
+          console.error("polling error:", e);
+        }
+      }, 15000);
       return () => clearInterval(poll);
-    }, [currentUser, lastLikeCheck]);
+    }, [currentUser]);
     useEffect(() => {
       const t = setInterval(() => {
         const next = (bgIdx + 1) % BG_SCENES.length;
@@ -2001,7 +2019,7 @@ body{
       setChatInput("");
       sendRealMsg(openChat.matchId, txt);
     };
-    const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
+    const chatConv = openChat || null;
     const shownProfiles = onlineOnly ? profiles.filter(p => p.online) : profiles;
     const cur = shownProfiles[0],
       nxt = shownProfiles[1],
@@ -2490,10 +2508,13 @@ body{
       className: "story-name"
     }, p.name)))), /*#__PURE__*/React.createElement("div", {
       className: "conv-list"
-    }, msgs.map(c => /*#__PURE__*/React.createElement("div", {
+    }, dbMatches.map(c => /*#__PURE__*/React.createElement("div", {
       key: c.id,
       className: "conv",
-      onClick: () => setOpenChat(c)
+      onClick: () => {
+        setOpenChat(c);
+        loadMessages(c.matchId);
+      }
     }, /*#__PURE__*/React.createElement("div", {
       className: "conv-av-wrap"
     }, /*#__PURE__*/React.createElement("img", {
