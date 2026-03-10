@@ -1630,9 +1630,20 @@ body{
       if (!currentUser) return;
       try {
         const uid = currentUser.id;
-        // Fetch matches where user is involved
-        const data = await supabase.select("matches", `?or=(user1_id.eq.${uid},user2_id.eq.${uid})&order=created_at.desc`);
-        if (!Array.isArray(data)) return;
+        // Two separate queries to avoid or= syntax issues
+        const [asUser1, asUser2] = await Promise.all([supabase.select("matches", `?user1_id=eq.${uid}&order=created_at.desc`), supabase.select("matches", `?user2_id=eq.${uid}&order=created_at.desc`)]);
+        const all = [...(Array.isArray(asUser1) ? asUser1 : []), ...(Array.isArray(asUser2) ? asUser2 : [])];
+        // Deduplicate by id
+        const seen = new Set();
+        const data = all.filter(m => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+        if (!data.length) {
+          setDbMatches([]);
+          return;
+        }
         // For each match, fetch the other user's profile
         const enriched = await Promise.all(data.map(async m => {
           const otherId = m.user1_id === uid ? m.user2_id : m.user1_id;
@@ -1883,7 +1894,7 @@ body{
           setShowMatch(true);
           // Créer le match en DB (le trigger le fait aussi, mais on force)
           try {
-            await supabase.insert("matches", {
+            await supabase.upsert("matches", {
               user1_id: currentUser.id < p.id ? currentUser.id : p.id,
               user2_id: currentUser.id < p.id ? p.id : currentUser.id
             });
