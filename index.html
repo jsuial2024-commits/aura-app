@@ -1880,7 +1880,6 @@ body{
         const existing = await supabase.select("swipes", `?swiper_id=eq.${p.id}&swiped_id=eq.${currentUser.id}&direction=eq.like`);
         if (Array.isArray(existing) && existing.length > 0) {
           // C'est un match !
-          setMatchedProfile(p);
           setShowMatch(true);
           // Créer le match en DB (le trigger le fait aussi, mais on force)
           try {
@@ -1889,6 +1888,20 @@ body{
               user2_id: currentUser.id < p.id ? p.id : currentUser.id
             });
           } catch (e) {/* ignore duplicate */}
+          // Fetch the real matchId to use in chat
+          try {
+            const uid = currentUser.id;
+            const u1 = uid < p.id ? uid : p.id;
+            const u2 = uid < p.id ? p.id : uid;
+            const matchRows = await supabase.select("matches", `?user1_id=eq.${u1}&user2_id=eq.${u2}&limit=1`);
+            const matchId = Array.isArray(matchRows) && matchRows[0]?.id;
+            setMatchedProfile({
+              ...p,
+              matchId: matchId || null
+            });
+          } catch (e) {
+            setMatchedProfile(p);
+          }
           loadMatches();
         } else {
           showToast("💛 Tu as liké " + p.name);
@@ -3625,7 +3638,10 @@ body{
       onClick: () => {
         setShowMatch(false);
         setTab("messages");
-        setOpenChat(msgs[0]);
+        if (matchedProfile?.matchId) {
+          setOpenChat(matchedProfile);
+          loadMessages(matchedProfile.matchId);
+        }
       }
     }, "\uD83D\uDCAC Envoyer un message"), /*#__PURE__*/React.createElement("button", {
       className: "match-btn match-btn-s",
