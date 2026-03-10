@@ -745,11 +745,12 @@ body{
 /* ─────────────────────────────────────────
    CHAT
 ───────────────────────────────────────── */
-.chat{position:absolute;top:0;left:0;right:0;bottom:70px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);z-index:10;}
+.chat{position:absolute;top:0;left:0;right:0;bottom:calc(70px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;overflow:hidden;background:#0a0e1a;z-index:10;isolation:isolate;}
 .chat-header{
   padding:8px 18px 12px;
   display:flex;align-items:center;gap:12px;
   border-bottom:1px solid var(--border);flex-shrink:0;
+  background:#0a0e1a;
 }
 .chat-back{font-size:22px;cursor:pointer;color:var(--rose);padding:4px;}
 .chat-av{width:44px;height:44px;border-radius:50%;object-fit:cover;
@@ -762,6 +763,7 @@ body{
   flex:1;overflow-y:auto;padding:16px 18px;
   display:flex;flex-direction:column;gap:8px;
   min-height:0;
+  background:#0a0e1a;
 }
 .chat-msgs::-webkit-scrollbar{display:none;}
 .msg-row{display:flex;}
