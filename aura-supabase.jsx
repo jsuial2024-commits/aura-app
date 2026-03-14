@@ -697,6 +697,8 @@ body{
   display:flex;align-items:center;gap:12px;
   border-bottom:1px solid var(--border);flex-shrink:0;
   background:#0a0e1a;
+  contain:layout style;
+  transform:translateZ(0);
 }
 .chat-back{font-size:22px;cursor:pointer;color:var(--rose);padding:4px;}
 .chat-av{width:44px;height:44px;border-radius:50%;object-fit:cover;
@@ -1058,6 +1060,7 @@ export default function AuraApp() {
   const [cardPhotoIdx, setCardPhotoIdx] = useState(0);
   const [lastSwiped, setLastSwiped] = useState(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // {label, onConfirm}
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [coverUrl, setCoverUrl]         = useState(null);
@@ -1478,6 +1481,7 @@ export default function AuraApp() {
         `?match_id=eq.${matchId}&order=created_at.asc&limit=100`);
       if (Array.isArray(data)) {
         setRealMsgs(prev => {
+          if (prev.length === data.length && prev[prev.length-1]?.id === data[data.length-1]?.id) return prev; // No change
           const newOnes = data.filter(m => !prev.find(p => p.id === m.id) && m.sender_id !== currentUser?.id);
           if (newOnes.length > 0) sendLocalNotif("💬 Nouveau message", newOnes[newOnes.length-1].text || "...");
           return data;
@@ -2266,7 +2270,8 @@ export default function AuraApp() {
               <div className="chat">
                 <div className="chat-header">
                   <div className="chat-back" onClick={() => { setOpenChat(null); setRealMsgs([]); setShowChatMenu(false); }}>←</div>
-                  <img key={chatConv.id} className="chat-av" src={chatConv.photo || ""} alt={chatConv.name} onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer", willChange:"transform"}}/>
+                  <img key={chatConv.id} className="chat-av" src={chatConv.photo || ""} alt={chatConv.name} onClick={() => setViewProfile(chatConv)} 
+                     style={{cursor:"pointer",willChange:"transform",contain:"strict",transform:"translateZ(0)"}}/>
                   <div className="chat-hinfo" onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer"}}>
                     <div className="chat-hname">{chatConv.name}</div>
                     <div className="chat-hstatus">{chatConv.online ? "● En ligne" : "Hors ligne"}</div>
@@ -2274,17 +2279,17 @@ export default function AuraApp() {
                   <div className="chat-hmore" onClick={() => setShowChatMenu(m => !m)} style={{cursor:"pointer",position:"relative"}}>
                     ⋯
                     {showChatMenu && (
-                      <div style={{position:"absolute",top:36,right:0,background:"#1a1f35",borderRadius:14,padding:8,minWidth:180,zIndex:100,boxShadow:"0 8px 32px rgba(0,0,0,0.5)",border:"1px solid rgba(255,255,255,0.1)"}}>
-                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); if (window.confirm(`Supprimer le match avec ${chatConv.name} ?`)) doDeleteMatch(chatConv.matchId); }}
-                          style={{padding:"12px 16px",color:"#ff6b6b",fontSize:14,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{position:"absolute",top:36,right:0,background:"#1a1f35",borderRadius:14,padding:8,minWidth:190,zIndex:100,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",border:"1px solid rgba(255,255,255,0.1)"}}>
+                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); setConfirmAction({ label:`Supprimer le match avec ${chatConv.name} ?`, onConfirm: () => doDeleteMatch(chatConv.matchId) }); }}
+                          style={{padding:"13px 16px",color:"#ff6b6b",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
                           🗑️ Supprimer le match
                         </div>
-                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); if (window.confirm(`Bloquer ${chatConv.name} ?`)) doBlockUser(chatConv.id, chatConv.matchId); }}
-                          style={{padding:"12px 16px",color:"#ff9f43",fontSize:14,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); setConfirmAction({ label:`Bloquer ${chatConv.name} ?`, onConfirm: () => doBlockUser(chatConv.id, chatConv.matchId) }); }}
+                          style={{padding:"13px 16px",color:"#ff9f43",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
                           🚫 Bloquer
                         </div>
                         <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); }}
-                          style={{padding:"12px 16px",color:"rgba(255,255,255,0.4)",fontSize:14,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                          style={{padding:"13px 16px",color:"rgba(255,255,255,0.4)",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
                           ✕ Annuler
                         </div>
                       </div>
@@ -2668,6 +2673,25 @@ export default function AuraApp() {
                       <div style={{position:"absolute",top:8,right:8,background:"rgba(232,100,122,0.9)",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>💛</div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── CONFIRM MODAL ── */}
+            {confirmAction && (
+              <div style={{position:"absolute",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end",padding:"0 0 40px"}}>
+                <div style={{width:"100%",background:"#1a1f35",borderRadius:"24px 24px 0 0",padding:24}}>
+                  <div style={{fontSize:16,color:"#fff",fontWeight:600,textAlign:"center",marginBottom:24,lineHeight:1.4}}>
+                    {confirmAction.label}
+                  </div>
+                  <div style={{display:"flex",gap:12}}>
+                    <button onClick={() => setConfirmAction(null)} style={{flex:1,padding:14,borderRadius:14,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",fontSize:15,cursor:"pointer",fontWeight:600}}>
+                      Annuler
+                    </button>
+                    <button onClick={() => { confirmAction.onConfirm(); setConfirmAction(null); }} style={{flex:1,padding:14,borderRadius:14,background:"linear-gradient(135deg,#ff6b6b,#ff4444)",border:"none",color:"#fff",fontSize:15,cursor:"pointer",fontWeight:700}}>
+                      Confirmer
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

@@ -850,6 +850,8 @@ body{
   display:flex;align-items:center;gap:12px;
   border-bottom:1px solid var(--border);flex-shrink:0;
   background:#0a0e1a;
+  contain:layout style;
+  transform:translateZ(0);
 }
 .chat-back{font-size:22px;cursor:pointer;color:var(--rose);padding:4px;}
 .chat-av{width:44px;height:44px;border-radius:50%;object-fit:cover;
@@ -1295,6 +1297,7 @@ body{
     const [cardPhotoIdx, setCardPhotoIdx] = useState(0);
     const [lastSwiped, setLastSwiped] = useState(null);
     const [showChatMenu, setShowChatMenu] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null); // {label, onConfirm}
     const [avatarUploading, setAvatarUploading] = useState(false);
     const [editingProfile, setEditingProfile] = useState(false);
     const [coverUrl, setCoverUrl] = useState(null);
@@ -1762,6 +1765,7 @@ body{
         const data = await supabase.select("messages", `?match_id=eq.${matchId}&order=created_at.asc&limit=100`);
         if (Array.isArray(data)) {
           setRealMsgs(prev => {
+            if (prev.length === data.length && prev[prev.length - 1]?.id === data[data.length - 1]?.id) return prev; // No change
             const newOnes = data.filter(m => !prev.find(p => p.id === m.id) && m.sender_id !== currentUser?.id);
             if (newOnes.length > 0) sendLocalNotif("💬 Nouveau message", newOnes[newOnes.length - 1].text || "...");
             return data;
@@ -2995,7 +2999,9 @@ body{
       onClick: () => setViewProfile(chatConv),
       style: {
         cursor: "pointer",
-        willChange: "transform"
+        willChange: "transform",
+        contain: "strict",
+        transform: "translateZ(0)"
       }
     }), /*#__PURE__*/React.createElement("div", {
       className: "chat-hinfo",
@@ -3022,21 +3028,24 @@ body{
         background: "#1a1f35",
         borderRadius: 14,
         padding: 8,
-        minWidth: 180,
+        minWidth: 190,
         zIndex: 100,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
         border: "1px solid rgba(255,255,255,0.1)"
       }
     }, /*#__PURE__*/React.createElement("div", {
       onClick: e => {
         e.stopPropagation();
         setShowChatMenu(false);
-        if (window.confirm(`Supprimer le match avec ${chatConv.name} ?`)) doDeleteMatch(chatConv.matchId);
+        setConfirmAction({
+          label: `Supprimer le match avec ${chatConv.name} ?`,
+          onConfirm: () => doDeleteMatch(chatConv.matchId)
+        });
       },
       style: {
-        padding: "12px 16px",
+        padding: "13px 16px",
         color: "#ff6b6b",
-        fontSize: 14,
+        fontSize: 15,
         cursor: "pointer",
         borderRadius: 10,
         display: "flex",
@@ -3047,12 +3056,15 @@ body{
       onClick: e => {
         e.stopPropagation();
         setShowChatMenu(false);
-        if (window.confirm(`Bloquer ${chatConv.name} ?`)) doBlockUser(chatConv.id, chatConv.matchId);
+        setConfirmAction({
+          label: `Bloquer ${chatConv.name} ?`,
+          onConfirm: () => doBlockUser(chatConv.id, chatConv.matchId)
+        });
       },
       style: {
-        padding: "12px 16px",
+        padding: "13px 16px",
         color: "#ff9f43",
-        fontSize: 14,
+        fontSize: 15,
         cursor: "pointer",
         borderRadius: 10,
         display: "flex",
@@ -3065,9 +3077,9 @@ body{
         setShowChatMenu(false);
       },
       style: {
-        padding: "12px 16px",
+        padding: "13px 16px",
         color: "rgba(255,255,255,0.4)",
-        fontSize: 14,
+        fontSize: 15,
         cursor: "pointer",
         borderRadius: 10,
         display: "flex",
@@ -3928,7 +3940,67 @@ body{
         justifyContent: "center",
         fontSize: 14
       }
-    }, "\uD83D\uDC9B"))))), /*#__PURE__*/React.createElement("div", {
+    }, "\uD83D\uDC9B"))))), confirmAction && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        inset: 0,
+        zIndex: 500,
+        background: "rgba(0,0,0,0.7)",
+        display: "flex",
+        alignItems: "flex-end",
+        padding: "0 0 40px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: "100%",
+        background: "#1a1f35",
+        borderRadius: "24px 24px 0 0",
+        padding: 24
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        color: "#fff",
+        fontWeight: 600,
+        textAlign: "center",
+        marginBottom: 24,
+        lineHeight: 1.4
+      }
+    }, confirmAction.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setConfirmAction(null),
+      style: {
+        flex: 1,
+        padding: 14,
+        borderRadius: 14,
+        background: "rgba(255,255,255,0.08)",
+        border: "1px solid rgba(255,255,255,0.15)",
+        color: "#fff",
+        fontSize: 15,
+        cursor: "pointer",
+        fontWeight: 600
+      }
+    }, "Annuler"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        confirmAction.onConfirm();
+        setConfirmAction(null);
+      },
+      style: {
+        flex: 1,
+        padding: 14,
+        borderRadius: 14,
+        background: "linear-gradient(135deg,#ff6b6b,#ff4444)",
+        border: "none",
+        color: "#fff",
+        fontSize: 15,
+        cursor: "pointer",
+        fontWeight: 700
+      }
+    }, "Confirmer")))), /*#__PURE__*/React.createElement("div", {
       className: "bottom-nav"
     }, [{
       id: "discover",
