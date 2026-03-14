@@ -2102,7 +2102,7 @@ export default function AuraApp() {
       )}
 
       {screen === "splash" && (
-          <div className={`screen${openChat ? " chat-mode" : ""}`}>
+          <div className="screen">
             <div className="splash">
               {/* status bar haut */}
 
@@ -2140,7 +2140,7 @@ export default function AuraApp() {
             APP PRINCIPALE
         ═══════════════════════════════════ */}
         {screen === "app" && (
-          <div className="screen">
+          <div className={`screen${openChat ? " chat-mode" : ""}`}>
 
 
             {/* ── DISCOVER ── */}
