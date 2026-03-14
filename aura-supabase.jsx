@@ -1057,6 +1057,7 @@ export default function AuraApp() {
   const [profilePhotos, setProfilePhotos] = useState([]);
   const [cardPhotoIdx, setCardPhotoIdx] = useState(0);
   const [lastSwiped, setLastSwiped] = useState(null);
+  const [showChatMenu, setShowChatMenu] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [coverUrl, setCoverUrl]         = useState(null);
@@ -2264,22 +2265,31 @@ export default function AuraApp() {
             {tab === "messages" && openChat && chatConv && (
               <div className="chat">
                 <div className="chat-header">
-                  <div className="chat-back" onClick={() => { setOpenChat(null); setRealMsgs([]); }}>←</div>
+                  <div className="chat-back" onClick={() => { setOpenChat(null); setRealMsgs([]); setShowChatMenu(false); }}>←</div>
                   <img key={chatConv.id} className="chat-av" src={chatConv.photo || ""} alt={chatConv.name} onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer", willChange:"transform"}}/>
                   <div className="chat-hinfo" onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer"}}>
                     <div className="chat-hname">{chatConv.name}</div>
                     <div className="chat-hstatus">{chatConv.online ? "● En ligne" : "Hors ligne"}</div>
                   </div>
-                  <div className="chat-hmore" onClick={() => {
-                    if (window.confirm(`Supprimer le match avec ${chatConv.name} ?`)) {
-                      doDeleteMatch(chatConv.matchId);
-                    }
-                  }} style={{cursor:"pointer"}}>🗑️</div>
-                  <div style={{fontSize:20,color:"var(--muted)",cursor:"pointer",padding:4}} onClick={() => {
-                    if (window.confirm(`Bloquer ${chatConv.name} ?`)) {
-                      doBlockUser(chatConv.id, chatConv.matchId);
-                    }
-                  }}>🚫</div>
+                  <div className="chat-hmore" onClick={() => setShowChatMenu(m => !m)} style={{cursor:"pointer",position:"relative"}}>
+                    ⋯
+                    {showChatMenu && (
+                      <div style={{position:"absolute",top:36,right:0,background:"#1a1f35",borderRadius:14,padding:8,minWidth:180,zIndex:100,boxShadow:"0 8px 32px rgba(0,0,0,0.5)",border:"1px solid rgba(255,255,255,0.1)"}}>
+                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); if (window.confirm(`Supprimer le match avec ${chatConv.name} ?`)) doDeleteMatch(chatConv.matchId); }}
+                          style={{padding:"12px 16px",color:"#ff6b6b",fontSize:14,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                          🗑️ Supprimer le match
+                        </div>
+                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); if (window.confirm(`Bloquer ${chatConv.name} ?`)) doBlockUser(chatConv.id, chatConv.matchId); }}
+                          style={{padding:"12px 16px",color:"#ff9f43",fontSize:14,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                          🚫 Bloquer
+                        </div>
+                        <div onClick={e => { e.stopPropagation(); setShowChatMenu(false); }}
+                          style={{padding:"12px 16px",color:"rgba(255,255,255,0.4)",fontSize:14,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+                          ✕ Annuler
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="chat-msgs">
                   {chatLoading && <div style={{textAlign:"center",color:"rgba(255,255,255,0.4)",padding:20}}>Chargement...</div>}
