@@ -2997,17 +2997,17 @@ body{
         setRealMsgs([]);
         setShowChatMenu(false);
       }
-    }, "\u2190"), /*#__PURE__*/React.createElement("img", {
+    }, "\u2190"), /*#__PURE__*/React.createElement("div", {
       key: chatConv.id,
       className: "chat-av",
-      src: chatConv.photo || "",
-      alt: chatConv.name,
       onClick: () => setViewProfile(chatConv),
       style: {
         cursor: "pointer",
-        willChange: "transform",
-        contain: "strict",
-        transform: "translateZ(0)"
+        backgroundImage: chatConv.photo ? `url(${chatConv.photo})` : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundColor: "#2a2f45",
+        flexShrink: 0
       }
     }), /*#__PURE__*/React.createElement("div", {
       className: "chat-hinfo",

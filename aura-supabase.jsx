@@ -2276,8 +2276,15 @@ export default function AuraApp() {
               <div className="chat">
                 <div className="chat-header">
                   <div className="chat-back" onClick={() => { setOpenChat(null); setRealMsgs([]); setShowChatMenu(false); }}>←</div>
-                  <img key={chatConv.id} className="chat-av" src={chatConv.photo || ""} alt={chatConv.name} onClick={() => setViewProfile(chatConv)} 
-                     style={{cursor:"pointer",willChange:"transform",contain:"strict",transform:"translateZ(0)"}}/>
+                  <div key={chatConv.id} className="chat-av" onClick={() => setViewProfile(chatConv)}
+                     style={{
+                       cursor:"pointer",
+                       backgroundImage: chatConv.photo ? `url(${chatConv.photo})` : "none",
+                       backgroundSize:"cover",
+                       backgroundPosition:"center",
+                       backgroundColor:"#2a2f45",
+                       flexShrink:0,
+                     }}/>
                   <div className="chat-hinfo" onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer"}}>
                     <div className="chat-hname">{chatConv.name}</div>
                     <div className="chat-hstatus">{chatConv.online ? "● En ligne" : "Hors ligne"}</div>
