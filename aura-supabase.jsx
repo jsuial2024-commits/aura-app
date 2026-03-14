@@ -2,6 +2,19 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────
 const SUPABASE_URL = "https://izbclyrionmfcjdidnuo.supabase.co";
+
+// ─── FAKE PROFILES (seed) ───────────────────────────────────────────────────
+const FAKE_PROFILES = [
+  { id:"11111111-1111-1111-1111-111111111111", name:"Camille", age:26, city:"Paris", job:"Designer UX", bio:"Passionnée de street art et de café 🎨☕", photo_url:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=600&q=80","https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=600&q=80"], latitude:48.85, longitude:2.35 },
+  { id:"22222222-2222-2222-2222-222222222222", name:"Léa", age:24, city:"Lyon", job:"Photographe", bio:"Je capture les instants qui comptent 📸", photo_url:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&q=80","https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=600&q=80"], latitude:45.75, longitude:4.85 },
+  { id:"33333333-3333-3333-3333-333333333333", name:"Sofia", age:28, city:"Paris", job:"Avocate", bio:"Debout à 6h, yoga, café, tribunal 🧘‍♀️⚖️", photo_url:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&q=80","https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80"], latitude:48.87, longitude:2.33 },
+  { id:"44444444-4444-4444-4444-444444444444", name:"Inès", age:23, city:"Bordeaux", job:"Étudiante en médecine", bio:"Entre les livres et les soirées 🍷📚", photo_url:"https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=600&q=80"], latitude:44.83, longitude:-0.57 },
+  { id:"55555555-5555-5555-5555-555555555555", name:"Jade", age:27, city:"Marseille", job:"Chef cuisinière", bio:"La mer et la cuisine, c'est toute ma vie 🌊🍽️", photo_url:"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&q=80","https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80"], latitude:43.30, longitude:5.37 },
+  { id:"66666666-6666-6666-6666-666666666666", name:"Manon", age:25, city:"Toulouse", job:"Ingénieure aéro", bio:"Passionnée d'aviation et de randonnée 🛩️🏔️", photo_url:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80"], latitude:43.60, longitude:1.44 },
+  { id:"77777777-7777-7777-7777-777777777777", name:"Chloé", age:29, city:"Nice", job:"Journaliste", bio:"Curieuse de tout, voyageuse à mes heures ✈️🎤", photo_url:"https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=600&q=80","https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&q=80"], latitude:43.71, longitude:7.26 },
+  { id:"88888888-8888-8888-8888-888888888888", name:"Emma", age:22, city:"Nantes", job:"Illustratrice", bio:"Je dessine le monde tel que je voudrais qu'il soit 🖍️", photo_url:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80"], latitude:47.21, longitude:-1.55 },
+];
+
 const SUPABASE_KEY = "sb_publishable_WiPfn8gk6OfdVL_2SxbhDg_tEEQpo06";
 
 // Client Supabase léger (sans npm, fetch natif)
@@ -89,6 +102,22 @@ const supabase = {
       body: JSON.stringify(data)
     });
     return r.json();
+  },
+
+  async upsert(table, data) {
+    const token = localStorage.getItem("aura_token") || SUPABASE_KEY;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method:"POST",
+      headers: {
+        ...this._headers,
+        "Authorization": `Bearer ${token}`,
+        "Prefer": "resolution=merge-duplicates,return=representation"
+      },
+      body: JSON.stringify(data)
+    });
+    const txt = await r.text();
+    if (!r.ok) throw new Error(`${r.status}: ${txt}`);
+    return txt ? JSON.parse(txt) : [];
   },
 
   // Realtime (polling simplifié)
@@ -277,7 +306,7 @@ body{
   transition:transform .15s;
 }
 .nav-item:active{transform:scale(.88);}
-.nav-icon{font-size:23px;transition:transform .2s;}
+.nav-icon{font-size:23px;transition:transform .2s;line-height:1;}
 .nav-label{font-size:10px;font-weight:600;color:var(--dim);
   transition:color .2s;letter-spacing:.6px;text-transform:uppercase;}
 .nav-item.active .nav-label{color:var(--rose);}
@@ -404,6 +433,9 @@ body{
   transform-origin:bottom center;
   box-shadow:0 24px 64px rgba(0,0,0,.55);
   transition:transform .08s;
+  background:#111828;
+  will-change:transform;
+  isolation:isolate;
 }
 .pcard:active{cursor:grabbing;}
 .pcard-img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -649,11 +681,12 @@ body{
 /* ─────────────────────────────────────────
    CHAT
 ───────────────────────────────────────── */
-.chat{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.chat{position:absolute;top:0;left:0;right:0;bottom:90px;display:flex;flex-direction:column;overflow:hidden;background:#0a0e1a;z-index:10;isolation:isolate;}
 .chat-header{
   padding:8px 18px 12px;
   display:flex;align-items:center;gap:12px;
   border-bottom:1px solid var(--border);flex-shrink:0;
+  background:#0a0e1a;
 }
 .chat-back{font-size:22px;cursor:pointer;color:var(--rose);padding:4px;}
 .chat-av{width:44px;height:44px;border-radius:50%;object-fit:cover;
@@ -665,6 +698,8 @@ body{
 .chat-msgs{
   flex:1;overflow-y:auto;padding:16px 18px;
   display:flex;flex-direction:column;gap:8px;
+  min-height:0;
+  background:#0a0e1a;
 }
 .chat-msgs::-webkit-scrollbar{display:none;}
 .msg-row{display:flex;}
@@ -685,8 +720,9 @@ body{
 .btime{font-size:10px;color:var(--dim);margin-top:3px;}
 .msg-row.me .btime{text-align:right;}
 .chat-bar{
-  padding:10px 14px 24px;display:flex;gap:10px;align-items:flex-end;
+  padding:10px 14px max(16px, env(safe-area-inset-bottom));display:flex;gap:10px;align-items:flex-end;
   border-top:1px solid var(--border);flex-shrink:0;
+  background:var(--bg);
 }
 .chat-input{
   flex:1;padding:13px 16px;
@@ -1006,6 +1042,20 @@ export default function AuraApp() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError]     = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [avatarUrl, setAvatarUrl]       = useState(null);
+  const [profilePhotos, setProfilePhotos] = useState([]);
+  const [cardPhotoIdx, setCardPhotoIdx] = useState(0);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [coverUrl, setCoverUrl]         = useState(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
+  const [audioSrcUrl, setAudioSrcUrl]     = useState(null);
+  const [showPlayer, setShowPlayer]       = useState(null);
+  const [profileName, setProfileName]   = useState("");
+  const [profileAge, setProfileAge]     = useState("");
+  const [profileCity, setProfileCity]   = useState("");
+  const [profileBio, setProfileBio]     = useState("");
+  const [profileJob, setProfileJob]     = useState("");
   const [dbProfiles, setDbProfiles]   = useState([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [tab, setTab]                 = useState("discover");
@@ -1016,9 +1066,18 @@ export default function AuraApp() {
   const [showMatch, setShowMatch]     = useState(false);
   const [matchedProfile, setMatchedProfile] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [onlineOnly, setOnlineOnly]     = useState(false);
   const [mediaPlayer, setMediaPlayer] = useState(null);
   const [openChat, setOpenChat]       = useState(null);
   const [msgs, setMsgs]               = useState(MESSAGES_DATA);
+  const [realMsgs, setRealMsgs]       = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [viewProfile, setViewProfile] = useState(null);
+  const [dbMatches, setDbMatches]       = useState([]);
+  const [newLikes, setNewLikes]         = useState(0);
+  const [lastLikeCheck, setLastLikeCheck] = useState(new Date().toISOString());
+  const [likesReceived, setLikesReceived] = useState([]);
+  const [showLikesPanel, setShowLikesPanel] = useState(false);
   const [chatInput, setChatInput]     = useState("");
   const [toast, setToast]             = useState(null);
   const [genderF, setGenderF]         = useState("Femmes");
@@ -1030,17 +1089,331 @@ export default function AuraApp() {
   const [recHas, setRecHas]           = useState({ voice:false, video:false });
   const [playing, setPlaying]         = useState(false);
   const [playProg, setPlayProg]       = useState(0);
-  const recTimerRef  = useRef(null);
-  const playTimerRef = useRef(null);
+  const recTimerRef    = useRef(null);
+  const playTimerRef   = useRef(null);
+  const mediaRecRef    = useRef(null);
+  const mediaChunksRef = useRef([]);
+  const audioBlobRef   = useRef(null);
+  const audioUrlRef    = useRef(null);
+  const videoUrlRef    = useRef(null);
+  const audioElRef     = useRef(null);
+
+
+  // Upload avatar to Supabase Storage
+  async function loadLikesReceived() {
+    if (!currentUser) return;
+    try {
+      const uid = currentUser.id;
+      // Get all swipes where someone liked me
+      const swipes = await supabase.select("swipes",
+        `?swiped_id=eq.${uid}&direction=eq.like&order=created_at.desc&limit=50`);
+      if (!Array.isArray(swipes) || swipes.length === 0) { setLikesReceived([]); return; }
+      // Fetch profile for each liker
+      const enriched = await Promise.all(swipes.map(async s => {
+        const profiles = await supabase.select("profiles", `?id=eq.${s.swiper_id}`);
+        const p = Array.isArray(profiles) && profiles[0];
+        return p ? {
+          id: p.id,
+          name: p.name || "Membre",
+          age: p.age || "",
+          city: p.city || "",
+          photo: p.photo_url || null,
+          photos: p.photos_urls || (p.photo_url ? [p.photo_url] : []),
+          bio: p.bio || "",
+          job: p.job || "",
+          likedAt: s.created_at,
+        } : null;
+      }));
+      setLikesReceived(enriched.filter(Boolean));
+      setNewLikes(0);
+    } catch(e) { console.error("loadLikesReceived:", e); }
+  }
+
+  async function seedFakeProfiles() {
+    showToast("⏳ Ajout des profils...");
+    try {
+      const token = localStorage.getItem("aura_token");
+      for (const p of FAKE_PROFILES) {
+        await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=ignore-duplicates",
+          },
+          body: JSON.stringify(p),
+        });
+      }
+      await loadProfiles();
+      showToast("✅ 8 profils ajoutés !");
+    } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+  }
+
+  async function setupPushNotifications() {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm === "granted") {
+        showToast("🔔 Notifications activées !");
+        localStorage.setItem("aura_notif", "1");
+      }
+    } catch(e) {}
+  }
+
+  function sendLocalNotif(title, body) {
+    if (Notification.permission === "granted" && document.hidden) {
+      new Notification(title, { body, icon: "/icon-192.png", badge: "/icon-192.png" });
+    }
+  }
+
+  async function uploadRecording(blob, type) {
+    if (!blob || !currentUser) return;
+    showToast("📤 Sauvegarde en cours...");
+    try {
+      const token = localStorage.getItem("aura_token");
+      const ext = blob.type.includes("webm") ? "webm" : "mp4";
+      const path = `${currentUser.id}/${type}_${Date.now()}.${ext}`;
+      const bucket = "media";
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": blob.type,
+          "x-upsert": "true",
+        },
+        body: blob,
+      });
+      if (r.ok) {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+        const col = type === "voice" ? "voice_url" : "video_url";
+        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+          method: "PATCH",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ [col]: url }),
+        });
+        showToast(type === "voice" ? "✅ Vocal sauvegardé !" : "✅ Vidéo sauvegardée !");
+      } else {
+        const txt = await r.text();
+        showToast("❌ Erreur upload: " + r.status);
+        console.error("Recording upload error:", r.status, txt);
+      }
+    } catch(e) {
+      showToast("❌ " + e.message.slice(0,50));
+    }
+  }
+
+  async function uploadExtraPhoto(file) {
+    if (!file || !currentUser) return;
+    if (profilePhotos.length >= 3) { showToast("Maximum 3 photos atteint"); return; }
+    try {
+      const token = localStorage.getItem("aura_token");
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${currentUser.id}/photo_${Date.now()}.${ext}`;
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": file.type || "image/jpeg",
+          "x-upsert": "true",
+        },
+        body: file,
+      });
+      if (r.ok) {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+        const newPhotos = [...profilePhotos, url].slice(0, 3);
+        setProfilePhotos(newPhotos);
+        // Save first photo as main avatar too
+        if (newPhotos.length === 1) setAvatarUrl(url);
+        // Save array to DB
+        const token2 = localStorage.getItem("aura_token");
+        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+          method: "PATCH",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${token2}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ photos_urls: newPhotos, photo_url: newPhotos[0] }),
+        });
+        showToast("✅ Photo ajoutée !");
+      } else { showToast("❌ Erreur upload"); }
+    } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+  }
+
+  async function removeExtraPhoto(idx) {
+    const newPhotos = profilePhotos.filter((_,i) => i !== idx);
+    setProfilePhotos(newPhotos);
+    if (idx === 0) setAvatarUrl(newPhotos[0] || null);
+    const token = localStorage.getItem("aura_token");
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ photos_urls: newPhotos, photo_url: newPhotos[0] || null }),
+    });
+    showToast("Photo supprimée");
+  }
+
+  async function uploadAvatar(file) {
+    if (!file || !currentUser) { showToast("❌ Pas de fichier ou non connecté"); return; }
+    setAvatarUploading(true);
+
+    // Aperçu local immédiat
+    const reader = new FileReader();
+    reader.onload = e => setAvatarUrl(e.target.result);
+    reader.readAsDataURL(file);
+
+    try {
+      const token = localStorage.getItem("aura_token");
+      if (!token) { showToast("❌ Token manquant, reconnectez-vous"); setAvatarUploading(false); return; }
+
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const ts = Date.now();
+      const path = `${currentUser.id}/avatar_${ts}.${ext}`;
+
+      showToast("📤 Upload en cours...");
+
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": file.type || "image/jpeg",
+          "x-upsert": "true",
+        },
+        body: file,
+      });
+
+      const respText = await r.text();
+      console.log("Storage response:", r.status, respText);
+
+      if (r.ok || r.status === 200) {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+        setAvatarUrl(url);
+        showToast("💾 Sauvegarde en DB...");
+        try {
+          // UPDATE direct (plus fiable que upsert)
+          const token2 = localStorage.getItem("aura_token");
+          const dbR = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+            method: "PATCH",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${token2}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+            },
+            body: JSON.stringify({ photo_url: url }),
+          });
+          const dbTxt = await dbR.text();
+          console.log("PATCH photo result:", dbR.status, dbTxt);
+          if (dbR.ok) {
+            showToast("✅ Photo sauvegardée !");
+          } else {
+            showToast("⚠️ DB erreur " + dbR.status + ": " + dbTxt.slice(0,50));
+          }
+        } catch(e2) {
+          console.error("DB save error:", e2.message);
+          showToast("⚠️ DB échouée: " + e2.message.slice(0,50));
+        }
+      } else {
+        console.error("Upload failed:", r.status, respText);
+        showToast("❌ Upload échoué " + r.status + ": " + respText.slice(0,60));
+      }
+    } catch(e) {
+      console.error("Upload exception:", e.message);
+      showToast("❌ Exception: " + e.message.slice(0,60));
+    }
+    setAvatarUploading(false);
+  }
+
+  // Save profile info to Supabase
+
+  async function uploadCover(file) {
+    const reader = new FileReader();
+    reader.onload = e => setCoverUrl(e.target.result);
+    reader.readAsDataURL(file);
+    try {
+      const token = localStorage.getItem("aura_token");
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${currentUser.id}/cover_${Date.now()}.${ext}`;
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}`, "Content-Type": file.type || "image/jpeg", "x-upsert": "true" },
+        body: file,
+      });
+      if (r.ok && currentUser) {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}?t=${Date.now()}`;
+        setCoverUrl(url);
+        await supabase.upsert("profiles", { id: currentUser.id, cover_url: url });
+      }
+    } catch(e) { console.error("Cover upload:", e); }
+  }
+
+  async function saveProfile() {
+    if (!currentUser) return;
+    try {
+      await supabase.upsert("profiles", {
+        id: currentUser.id,
+        name: profileName || "Membre",
+        age: parseInt(profileAge) || null,
+        city: profileCity || null,
+        bio: profileBio || null,
+        job: profileJob || null,
+      });
+      showToast("Profil mis à jour ✓");
+      setEditingProfile(false);
+    } catch(e) {
+      console.error("saveProfile error:", e);
+      showToast("Erreur sauvegarde: " + (e.message || "inconnue"));
+    }
+  }
 
   // BG crossfade cycling
+  async function loadMyProfile(userId) {
+    try {
+      const data = await supabase.select("profiles", `?id=eq.${userId}`);
+      console.log("loadMyProfile data:", JSON.stringify(data));
+      if (Array.isArray(data) && data[0]) {
+        const p = data[0];
+        if (p.name)      setProfileName(p.name);
+        if (p.age)       setProfileAge(String(p.age));
+        if (p.city)      setProfileCity(p.city);
+        if (p.bio)       setProfileBio(p.bio);
+        if (p.job)       setProfileJob(p.job);
+        if (p.photo_url) { setAvatarUrl(p.photo_url); console.log("Avatar loaded:", p.photo_url.slice(0,60)); }
+        if (p.photos_urls && Array.isArray(p.photos_urls)) setProfilePhotos(p.photos_urls);
+        else if (p.photo_url) setProfilePhotos([p.photo_url]);
+        if (p.cover_url) setCoverUrl(p.cover_url);
+      } else {
+        console.log("loadMyProfile: no profile found for", userId);
+      }
+    } catch(e) { console.error("loadMyProfile error:", e); }
+  }
+
   async function loadProfiles() {
     try {
       const userId = supabase.auth.getUserId();
+      // Fetch profiles already swiped to exclude them
+      const swipedData = await supabase.select("swipes",
+        "?swiper_id=eq." + userId + "&select=swiped_id");
+      const swipedIds = Array.isArray(swipedData)
+        ? swipedData.map(s => s.swiped_id) : [];
+
       const data = await supabase.select("profiles",
         "?id=neq." + userId + "&limit=20&order=created_at.desc");
-      if (Array.isArray(data) && data.length > 0) {
-        setDbProfiles(data.map(p => ({
+      const filtered = Array.isArray(data)
+        ? data.filter(p => p.id !== userId && !swipedIds.includes(p.id)) : data;
+      const mapped = Array.isArray(filtered) ? filtered.map(p => ({
           id: p.id, name: p.name || "Membre", age: p.age || 25,
           job: p.job || "AURA", city: p.city || "Paris",
           bio: p.bio || "Nouveau sur AURA",
@@ -1048,10 +1421,143 @@ export default function AuraApp() {
           verified: p.verified || false, premium: p.premium || false,
           match: Math.floor(75 + Math.random()*24),
           hasVoice: !!p.voice_url, hasVideo: !!p.video_url,
+          voice_url: p.voice_url || null,
+          video_url: p.video_url || null,
           photo: p.photo_url || null,
-        })));
+          photos: p.photos_urls || (p.photo_url ? [p.photo_url] : []),
+          online: true,
+        })) : [];
+      if (mapped.length > 0) {
+        setDbProfiles(mapped);
+        setProfiles(mapped);
+      } else if (Array.isArray(data) && data.length > 0) {
+        // Tous déjà swipés → réinitialiser les swipes et recharger
+        const allMapped = data.filter(p => p.id !== userId).map(p => ({
+          id: p.id, name: p.name || "Membre", age: p.age || 25,
+          job: p.job || "AURA", city: p.city || "Paris",
+          bio: p.bio || "Nouveau sur AURA",
+          distance: "? km", interests: p.interests || ["Voyages"],
+          verified: p.verified || false, premium: p.premium || false,
+          match: Math.floor(75 + Math.random()*24),
+          hasVoice: !!p.voice_url, hasVideo: !!p.video_url,
+          voice_url: p.voice_url || null,
+          video_url: p.video_url || null,
+          photo: p.photo_url || null,
+          photos: p.photos_urls || (p.photo_url ? [p.photo_url] : []),
+          online: true,
+        }));
+        setDbProfiles(allMapped);
+        setProfiles(allMapped);
+      } else {
+        setProfiles([]);
       }
     } catch(e) { console.log(e); }
+  }
+
+
+  async function loadMessages(matchId) {
+    if (!matchId) return;
+    setChatLoading(true);
+    try {
+      const token = localStorage.getItem("aura_token");
+      const data = await supabase.select("messages",
+        `?match_id=eq.${matchId}&order=created_at.asc&limit=100`);
+      if (Array.isArray(data)) {
+        setRealMsgs(prev => {
+          const newOnes = data.filter(m => !prev.find(p => p.id === m.id) && m.sender_id !== currentUser?.id);
+          if (newOnes.length > 0) sendLocalNotif("💬 Nouveau message", newOnes[newOnes.length-1].text || "...");
+          return data;
+        });
+      }
+    } catch(e) { console.error("loadMessages:", e); }
+    setChatLoading(false);
+  }
+
+  async function sendRealMsg(matchId, text) {
+    if (!matchId || !text.trim() || !currentUser) return;
+    try {
+      const token = localStorage.getItem("aura_token");
+      const msg = {
+        match_id: matchId,
+        sender_id: currentUser.id,
+        text: text.trim(),
+      };
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/messages`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify(msg),
+      });
+      const respTxt = await r.text();
+      console.log("sendMsg response:", r.status, respTxt);
+      if (r.ok) {
+        const saved = respTxt ? JSON.parse(respTxt) : null;
+        const newMsg = Array.isArray(saved) ? saved[0] : saved;
+        if (newMsg) {
+          setRealMsgs(prev => [...prev, newMsg]);
+        } else {
+          // Insert ok but no return — reload messages
+          setTimeout(() => loadMessages(matchId), 500);
+        }
+      } else {
+        console.error("sendMsg failed:", r.status, respTxt);
+        showToast("❌ Message non envoyé: " + r.status);
+      }
+    } catch(e) {
+      console.error("sendRealMsg:", e);
+      showToast("❌ " + e.message.slice(0,50));
+    }
+  }
+
+  async function loadMatches() {
+    if (!currentUser) return;
+    try {
+      const uid = currentUser.id;
+      // Two separate queries to avoid or= syntax issues
+      const [asUser1, asUser2] = await Promise.all([
+        supabase.select("matches", `?user1_id=eq.${uid}&order=created_at.desc`),
+        supabase.select("matches", `?user2_id=eq.${uid}&order=created_at.desc`),
+      ]);
+      const all = [...(Array.isArray(asUser1) ? asUser1 : []), ...(Array.isArray(asUser2) ? asUser2 : [])];
+      // Deduplicate by id
+      const seen = new Set();
+      const data = all.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
+      if (!data.length) { setDbMatches([]); return; }
+      // For each match, fetch the other user's profile
+      const enriched = await Promise.all(data.map(async m => {
+        const otherId = m.user1_id === uid ? m.user2_id : m.user1_id;
+        const profiles = await supabase.select("profiles", `?id=eq.${otherId}`);
+        const p = Array.isArray(profiles) && profiles[0];
+        return {
+          matchId: m.id,
+          id: otherId,
+          name: p?.name || "Membre",
+          age: p?.age || "",
+          city: p?.city || "",
+          bio: p?.bio || "",
+          job: p?.job || "",
+          photo: p?.photo_url || null,
+          voice_url: p?.voice_url || null,
+          video_url: p?.video_url || null,
+          online: Math.random() > 0.5,
+          lastMsg: "",
+          unread: 0,
+          chat: [],
+          createdAt: m.created_at,
+        };
+      }));
+      setDbMatches(enriched);
+      // Merge into msgs state for chat
+      setMsgs(prev => {
+        const existingIds = new Set(enriched.map(m => m.id));
+        const filtered = prev.filter(m => !existingIds.has(m.id));
+        return [...enriched, ...filtered];
+      });
+    } catch(e) { console.error("loadMatches:", e); }
   }
 
   async function handleAuth() {
@@ -1064,19 +1570,32 @@ export default function AuraApp() {
         });
         if (res.error) { setAuthError(res.error.message || res.msg || JSON.stringify(res.error)); }
         else {
+          // Try auto-login after signup
           const login = await supabase.auth.signIn({ email: authEmail, password: authPassword });
           if (login.access_token) {
+            localStorage.setItem("aura_token", login.access_token);
+            localStorage.setItem("aura_user_id", login.user?.id);
             setCurrentUser({ id: login.user?.id });
+            await loadMyProfile(login.user?.id);
             await loadProfiles();
-            setScreen("discover");
-          } else { setAuthError("Compte cree ! Connecte-toi."); setAuthMode("login"); }
+            setScreen("app");
+          } else {
+            // Fallback: compte créé, connexion manuelle
+            setAuthError("Compte créé ! Connecte-toi maintenant.");
+            setAuthMode("login");
+          }
         }
       } else {
         const res = await supabase.auth.signIn({ email: authEmail, password: authPassword });
         if (res.access_token) {
+          localStorage.setItem("aura_token", res.access_token);
+          localStorage.setItem("aura_user_id", res.user?.id);
           setCurrentUser({ id: res.user?.id });
+          await loadMyProfile(res.user?.id);
           await loadProfiles();
-          setScreen("discover");
+          loadMatches();
+          setScreen("app");
+          setTimeout(() => setupPushNotifications(), 2000);
         } else { setAuthError(res.error?.message || res.error_description || res.msg || "Email ou mot de passe incorrect. Verifie tes identifiants."); }
       }
     } catch(e) { console.error("handleAuth error:", e); setAuthError("Erreur: " + e.message); }
@@ -1087,9 +1606,12 @@ export default function AuraApp() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (supabase.auth.isLoggedIn()) {
-        setCurrentUser({ id: supabase.auth.getUserId() });
+        const uid3 = supabase.auth.getUserId();
+        setCurrentUser({ id: uid3 });
+        loadMyProfile(uid3);
         loadProfiles();
-        setScreen("discover");
+        loadMatches();
+        setScreen("app");
       } else {
         setScreen("auth");
       }
@@ -1097,7 +1619,47 @@ export default function AuraApp() {
     return () => clearTimeout(timer);
   }, []);
 
+
+  // Polling messages en chat toutes les 5s
   useEffect(() => {
+    activeMatchIdRef.current = openChat?.matchId || null;
+    if (!openChat?.matchId) return;
+    loadMessages(openChat.matchId); // load immediately on open
+    const t = setInterval(() => {
+      if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
+    }, 5000);
+    return () => { clearInterval(t); };
+  }, [openChat?.matchId]);
+
+  // Polling: vérifie les nouveaux likes toutes les 30s
+  const likeCheckRef = React.useRef(new Date().toISOString());
+  const activeMatchIdRef = React.useRef(null);
+  useEffect(() => {
+    if (!currentUser) return;
+    const poll = setInterval(async () => {
+      // Skip heavy polling when user is actively chatting
+      if (activeMatchIdRef.current) return;
+      try {
+        const uid = currentUser.id;
+        const since = likeCheckRef.current;
+        const likes = await supabase.select("swipes",
+          `?swiped_id=eq.${uid}&direction=eq.like&created_at=gt.${encodeURIComponent(since)}`);
+        if (Array.isArray(likes) && likes.length > 0) {
+          setNewLikes(n => n + likes.length);
+          likeCheckRef.current = new Date().toISOString();
+          const msg = likes.length > 1 ? `${likes.length} personnes vous ont liké !` : "Quelqu'un vous a liké !";
+          showToast("💛 " + msg);
+          sendLocalNotif("✦ Aura", msg);
+        }
+        loadMatches();
+      } catch(e) { console.error("polling error:", e); }
+    }, 15000);
+    return () => clearInterval(poll);
+  }, [currentUser]);
+
+  useEffect(() => {
+    // Pause background animation when in chat or messages tab to avoid re-render flicker
+    if (openChat || tab === "messages") return;
     const t = setInterval(() => {
       const next = (bgIdx + 1) % BG_SCENES.length;
       setBgNext(next);
@@ -1108,7 +1670,7 @@ export default function AuraApp() {
       }, 1400);
     }, 7000);
     return () => clearInterval(t);
-  }, [bgIdx]);
+  }, [bgIdx, openChat, tab]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -1124,67 +1686,194 @@ export default function AuraApp() {
     else if (drag.x < -85) doPass();
     setDrag({ on:false, x:0, y:0, sx:0, sy:0 });
   };
-
-  const doLike = () => {
-    if (!profiles.length) return;
-    const p = profiles[0];
-    if (Math.random() > 0.38) { setMatchedProfile(p); setShowMatch(true); }
-    else showToast("💛 Tu as liké " + p.name);
-    setProfiles(prev => prev.slice(1));
-    setBgIdx(i => (i+1) % BG_SCENES.length);
+  // Touch support for mobile swipe
+  const onTD = e => {
+    const t = e.touches[0];
+    setDrag({ on:true, x:0, y:0, sx:t.clientX, sy:t.clientY });
   };
-  const doPass = () => {
-    if (!profiles.length) return;
+  const onTM = e => {
+    if (!drag.on) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    setDrag(d => ({...d, x:t.clientX-d.sx, y:t.clientY-d.sy}));
+  };
+  const onTU = () => {
+    if (!drag.on) return;
+    if (drag.x > 85) doLike();
+    else if (drag.x < -85) doPass();
+    setDrag({ on:false, x:0, y:0, sx:0, sy:0 });
+  };
+
+  const doLike = async () => {
+    if (!profiles.length || !currentUser) return;
+    const p = profiles[0];
+    // Retire le profil immédiatement pour fluidité
     setProfiles(prev => prev.slice(1));
+    setCardPhotoIdx(0);
+    setBgIdx(i => (i+1) % BG_SCENES.length);
+    try {
+      await supabase.insert("swipes", {
+        swiper_id: currentUser.id,
+        swiped_id: p.id,
+        direction: "like"
+      });
+      // Vérifier si match mutuel
+      const existing = await supabase.select("swipes",
+        `?swiper_id=eq.${p.id}&swiped_id=eq.${currentUser.id}&direction=eq.like`);
+      if (Array.isArray(existing) && existing.length > 0) {
+        // C'est un match !
+        setShowMatch(true);
+        // Créer le match en DB (le trigger le fait aussi, mais on force)
+        try {
+          await supabase.upsert("matches", {
+            user1_id: currentUser.id < p.id ? currentUser.id : p.id,
+            user2_id: currentUser.id < p.id ? p.id : currentUser.id,
+          });
+        } catch(e) { /* ignore duplicate */ }
+        // Fetch the real matchId to use in chat
+        try {
+          const uid = currentUser.id;
+          const u1 = uid < p.id ? uid : p.id;
+          const u2 = uid < p.id ? p.id : uid;
+          const matchRows = await supabase.select("matches",
+            `?user1_id=eq.${u1}&user2_id=eq.${u2}&limit=1`);
+          const matchId = Array.isArray(matchRows) && matchRows[0]?.id;
+          setMatchedProfile({ ...p, matchId: matchId || null });
+        } catch(e) {
+          setMatchedProfile(p);
+        }
+        loadMatches();
+      } else {
+        showToast("💛 Tu as liké " + p.name);
+      }
+    } catch(e) {
+      if (e.message && e.message.includes("duplicate")) {
+        // Déjà swiké
+      } else {
+        showToast("💛 Tu as liké " + p.name);
+      }
+    }
+  };
+
+  const doPass = async () => {
+    if (!profiles.length || !currentUser) return;
+    const p = profiles[0];
+    setProfiles(prev => prev.slice(1));
+    setCardPhotoIdx(0);
     setBgIdx(i => (i+1) % BG_SCENES.length);
     showToast("👋 Profil passé");
+    try {
+      await supabase.insert("swipes", {
+        swiper_id: currentUser.id,
+        swiped_id: p.id,
+        direction: "pass"
+      });
+    } catch(e) { /* ignore */ }
   };
-  const doUndo = () => { setProfiles(PROFILES); showToast("↩ Retour au début"); };
+
+  const doUndo = () => { loadProfiles(); showToast("↩ Rechargement"); };
 
   // ── Recording ──
-  const startRec = (type) => {
-    setRecording({ type, elapsed: 0 });
-    let t = 0;
-    recTimerRef.current = setInterval(() => {
-      t += 0.1;
-      setRecording(r => ({ ...r, elapsed: Math.min(t, 10) }));
-      if (t >= 10) stopRec(type);
-    }, 100);
-  };
-  const stopRec = (type) => {
-    clearInterval(recTimerRef.current);
-    setRecording(null);
-    setRecHas(prev => ({ ...prev, [type || recording?.type]: true }));
-    showToast(type === "voice" || (recording?.type === "voice") ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
+  const startRec = async (type) => {
+    try {
+      const constraints = type === "voice"
+        ? { audio: true }
+        : { audio: true, video: { facingMode: "user", width: 480, height: 640 } };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      mediaChunksRef.current = [];
+
+      const mimeType = type === "voice"
+        ? (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4")
+        : (MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : "video/mp4");
+
+      const mr = new MediaRecorder(stream, { mimeType });
+      mediaRecRef.current = mr;
+
+      mr.ondataavailable = e => {
+        if (e.data.size > 0) mediaChunksRef.current.push(e.data);
+      };
+
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(mediaChunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        audioBlobRef.current = blob;
+        if (type === "voice") {
+          audioUrlRef.current = url;
+          audioElRef.current = null;
+          setAudioSrcUrl(url);
+        } else {
+          videoUrlRef.current = url;
+          setVideoPreviewUrl(url);
+        }
+        const recType = type;
+        setRecHas(prev => ({ ...prev, [recType]: true }));
+        setShowPlayer(recType);
+        showToast(recType === "voice" ? "🎤 Message vocal enregistré !" : "🎬 Vidéo enregistrée !");
+      };
+
+      mr.start();
+      setRecording({ type, elapsed: 0 });
+
+      let t = 0;
+      recTimerRef.current = setInterval(() => {
+        t += 0.1;
+        setRecording(r => r ? ({ ...r, elapsed: Math.min(t, 10) }) : null);
+        if (t >= 10) stopRec(type);
+      }, 100);
+
+    } catch(e) {
+      if (e.name === "NotAllowedError") {
+        showToast("❌ Accès micro/caméra refusé");
+      } else {
+        showToast("❌ Erreur: " + e.message);
+      }
+    }
   };
 
-  // ── Voice playback simulation ──
+  const stopRec = (type) => {
+    clearInterval(recTimerRef.current);
+    if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+      mediaRecRef.current.stop();
+    }
+    setRecording(null);
+  };
+
+  // ── Lecture audio réelle ──
   const startPlay = () => {
+    if (!audioUrlRef.current) return;
+    if (!audioElRef.current) {
+      audioElRef.current = new Audio(audioUrlRef.current);
+      audioElRef.current.onended = () => { setPlaying(false); setPlayProg(0); };
+    }
+    audioElRef.current.play();
     setPlaying(true); setPlayProg(0);
     let p = 0;
     playTimerRef.current = setInterval(() => {
-      p += 1;
-      setPlayProg(p);
+      p += 1; setPlayProg(p);
       if (p >= 100) { clearInterval(playTimerRef.current); setPlaying(false); setPlayProg(0); }
     }, 100);
   };
+
   const stopPlay = () => {
-    clearInterval(playTimerRef.current); setPlaying(false); setPlayProg(0);
+    if (audioElRef.current) audioElRef.current.pause();
+    clearInterval(playTimerRef.current);
+    setPlaying(false); setPlayProg(0);
   };
 
   // ── Chat ──
   const sendMsg = () => {
-    if (!chatInput.trim() || !openChat) return;
-    setMsgs(prev => prev.map(c =>
-      c.id === openChat.id
-        ? { ...c, chat: [...c.chat, { from:"me", text:chatInput, time:"Maintenant" }], lastMsg:chatInput, unread:0 }
-        : c
-    ));
+    const matchId = activeMatchIdRef.current;
+    if (!chatInput.trim() || !matchId) return;
+    const txt = chatInput;
     setChatInput("");
+    sendRealMsg(matchId, txt);
   };
 
-  const chatConv = openChat ? msgs.find(m => m.id === openChat.id) : null;
-  const cur = profiles[0], nxt = profiles[1], nn = profiles[2];
+  const chatConv = openChat || null;
+  const shownProfiles = onlineOnly ? profiles.filter(p => p.online) : profiles;
+  const cur = shownProfiles[0], nxt = shownProfiles[1], nn = shownProfiles[2];
   const likeOp = Math.max(0, Math.min(1, drag.x / 85));
   const nopeOp = Math.max(0, Math.min(1, -drag.x / 85));
   const cardStyle = drag.on
@@ -1198,9 +1887,11 @@ export default function AuraApp() {
 
         {/* FOND PHOTO-RÉALISTE */}
         <div className="bg-wrap">
-          <SceneBg sceneIndex={bgIdx} opacity={1} />
-          <SceneBg sceneIndex={bgNext} opacity={bgCrossfade ? 1 : 0} transition="opacity 1.8s ease" />
-          <div className="bg-overlay"/>
+          <div style={{position:"absolute",inset:0,zIndex:0,willChange:"contents"}}>
+            {!openChat && <SceneBg sceneIndex={bgIdx} opacity={1} />}
+            {!openChat && <SceneBg sceneIndex={bgNext} opacity={bgCrossfade ? 1 : 0} transition="opacity 1.8s ease" />}
+            <div className="bg-overlay"/>
+          </div>
         </div>
 
         {/* ═══════════════════════════════════
@@ -1262,10 +1953,7 @@ export default function AuraApp() {
           <div className="screen">
             <div className="splash">
               {/* status bar haut */}
-              <div className="splash-status">
-                <span style={{ fontSize:15, fontWeight:700 }}>9:41</span>
-                <span style={{ fontSize:13 }}>●●● WiFi 🔋</span>
-              </div>
+
 
               {/* Logo centré */}
               <div className="splash-logo">Aura</div>
@@ -1273,7 +1961,7 @@ export default function AuraApp() {
 
               {/* Pills features */}
               <div className="splash-pills">
-                <div className="splash-pill">🔮 Matching IA</div>
+                <div className="splash-pill">✨ Matching IA</div>
                 <div className="splash-pill">🎤 Message vocal</div>
                 <div className="splash-pill">🎬 Vidéo 10s</div>
                 <div className="splash-pill">🛡️ Profils vérifiés</div>
@@ -1282,10 +1970,10 @@ export default function AuraApp() {
               <div className="splash-divider"/>
 
               {/* CTAs */}
-              <button className="btn-primary" onClick={() => setScreen("app")}>
+              <button className="btn-primary" onClick={() => setScreen("auth")}>
                 Commencer gratuitement ✦
               </button>
-              <button className="btn-ghost" onClick={() => setScreen("app")}>
+              <button className="btn-ghost" onClick={() => { setScreen("auth"); setAuthMode("login"); }}>
                 J'ai déjà un compte
               </button>
 
@@ -1301,10 +1989,7 @@ export default function AuraApp() {
         ═══════════════════════════════════ */}
         {screen === "app" && (
           <div className="screen">
-            <div className="status-bar">
-              <span className="s-time">9:41</span>
-              <div className="s-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div>
-            </div>
+
 
             {/* ── DISCOVER ── */}
             {tab === "discover" && (
@@ -1313,19 +1998,34 @@ export default function AuraApp() {
                   <div className="logo">Aura</div>
                   <div style={{ display:"flex", gap:10 }}>
                     <div className="icon-btn" onClick={() => setShowFilters(true)}>⚙️</div>
-                    <div className="icon-btn">🔔</div>
+                    <div className="icon-btn" onClick={() => { setShowLikesPanel(true); loadLikesReceived(); }} style={{position:"relative"}}>
+                      🔔
+                      {newLikes > 0 && <div style={{position:"absolute",top:-4,right:-4,background:"#E8647A",borderRadius:"50%",width:16,height:16,fontSize:10,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>{newLikes}</div>}
+                    </div>
                   </div>
                 </div>
 
-                <div className="card-stack" onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}>
-                  {nn && <div className="pcard bcard2" style={{ backgroundImage:`url(${nn.photo})`, backgroundSize:"cover", backgroundPosition:"center" }}><div className="pcard-grad"/></div>}
-                  {nxt && <div className="pcard bcard1" style={{ backgroundImage:`url(${nxt.photo})`, backgroundSize:"cover", backgroundPosition:"center" }}><div className="pcard-grad"/></div>}
+                <div className="card-stack" onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU} onTouchStart={onTD} onTouchMove={onTM} onTouchEnd={onTU}>
+                  {nn && <div className="pcard bcard2" style={{ backgroundImage:`url(${(nn.photos&&nn.photos[0])||nn.photo})`, backgroundSize:"cover", backgroundPosition:"center", backgroundColor:"#111828" }}><div className="pcard-grad"/></div>}
+                  {nxt && <div className="pcard bcard1" style={{ backgroundImage:`url(${(nxt.photos&&nxt.photos[0])||nxt.photo})`, backgroundSize:"cover", backgroundPosition:"center", backgroundColor:"#111828" }}><div className="pcard-grad"/></div>}
 
                   {cur ? (
                     <div className="pcard fcard"
-                      style={{ backgroundImage:`url(${cur.photo})`, backgroundSize:"cover", backgroundPosition:"center", ...cardStyle }}
-                      onMouseDown={onMD}
+                      style={{ backgroundImage:`url(${(cur.photos && cur.photos[cardPhotoIdx]) || cur.photo})`, backgroundSize:"cover", backgroundPosition:"center", backgroundColor:"#111828", ...cardStyle }}
+                      onMouseDown={onMD} onTouchStart={onTD}
                     >
+                      {/* Photo dots + tap zones */}
+                      {cur.photos && cur.photos.length > 1 && (
+                        <>
+                          <div style={{position:"absolute",top:10,left:0,right:0,display:"flex",justifyContent:"center",gap:4,zIndex:5,pointerEvents:"none"}}>
+                            {cur.photos.map((_,i) => (
+                              <div key={i} style={{height:3,borderRadius:2,background:i===cardPhotoIdx?"#fff":"rgba(255,255,255,0.4)",flex:i===cardPhotoIdx?2:1,transition:"all .2s"}}/>
+                            ))}
+                          </div>
+                          <div style={{position:"absolute",top:0,left:0,width:"40%",height:"70%",zIndex:6}} onClick={e=>{e.stopPropagation();setCardPhotoIdx(i=>Math.max(0,i-1));}}/>
+                          <div style={{position:"absolute",top:0,right:0,width:"40%",height:"70%",zIndex:6}} onClick={e=>{e.stopPropagation();setCardPhotoIdx(i=>Math.min((cur.photos.length-1),i+1));}}/>
+                        </>
+                      )}
                       <div className="pcard-grad"/>
                       <div className="swipe-ov like" style={{ opacity:likeOp }}><div className="swipe-lbl like">LIKE ✓</div></div>
                       <div className="swipe-ov nope" style={{ opacity:nopeOp }}><div className="swipe-lbl nope">NOPE ✗</div></div>
@@ -1353,11 +2053,16 @@ export default function AuraApp() {
                       </div>
 
                       <div className="pcard-body">
-                        <div className="pcard-name-row">
+                        <div className="pcard-name-row" onClick={() => setViewProfile(cur)} style={{cursor:"pointer"}}>
                           <div className="pcard-name">{cur.name}</div>
                           <div className="pcard-age">{cur.age}</div>
+                          <span style={{marginLeft:"auto",fontSize:18,opacity:0.7}}>ⓘ</span>
                         </div>
                         <div className="pcard-job">💼 {cur.job} · {cur.city}</div>
+                        <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center"}}>
+                          {cur.hasVoice && <div onClick={() => setViewProfile({...cur, playVoice:true})} style={{background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>🎵 Écouter</div>}
+                          {cur.hasVideo && <div onClick={() => setViewProfile({...cur, playVideo:true})} style={{background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>▶ Vidéo</div>}
+                        </div>
                         <div className="pcard-tags">{cur.interests.map(t => <span key={t} className="ptag">{t}</span>)}</div>
                         <div className="pcard-dist">📍 {cur.distance}</div>
                       </div>
@@ -1390,18 +2095,28 @@ export default function AuraApp() {
                   <div className="icon-btn">✏️</div>
                 </div>
                 <div className="stories">
-                  {(dbProfiles.length > 0 ? dbProfiles : PROFILES).map(p => (
-                    <div key={p.id} className="story" onClick={() => showToast(`Story de ${p.name}`)}>
+                  {dbMatches.length === 0 && (
+                    <div style={{color:"var(--muted)",fontSize:13,padding:"8px 4px",opacity:0.7}}>
+                      Tes matchs apparaîtront ici ✨
+                    </div>
+                  )}
+                  {dbMatches.map(p => (
+                    <div key={p.id} className="story" onClick={() => { setOpenChat(p); loadMessages(p.matchId); }}>
                       <div className="story-ring">
-                        <div className="story-inner"><img src={p.photo} alt={p.name}/></div>
+                        <div className="story-inner">
+                          {p.photo
+                            ? <img src={p.photo} alt={p.name}/>
+                            : <div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#E8647A,#E8A050)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"white"}}>{p.name[0]}</div>
+                          }
+                        </div>
                       </div>
                       <span className="story-name">{p.name}</span>
                     </div>
                   ))}
                 </div>
                 <div className="conv-list">
-                  {msgs.map(c => (
-                    <div key={c.id} className="conv" onClick={() => setOpenChat(c)}>
+                  {dbMatches.map(c => (
+                    <div key={c.id} className="conv" onClick={() => { setOpenChat(c); loadMessages(c.matchId); }}>
                       <div className="conv-av-wrap">
                         <img className="conv-av" src={c.photo} alt={c.name}/>
                         {c.online && <div className="online-dot"/>}
@@ -1424,21 +2139,35 @@ export default function AuraApp() {
             {tab === "messages" && openChat && chatConv && (
               <div className="chat">
                 <div className="chat-header">
-                  <div className="chat-back" onClick={() => setOpenChat(null)}>←</div>
-                  <img className="chat-av" src={chatConv.photo} alt={chatConv.name}/>
-                  <div className="chat-hinfo">
+                  <div className="chat-back" onClick={() => { setOpenChat(null); setRealMsgs([]); }}>←</div>
+                  <img key={chatConv.id} className="chat-av" src={chatConv.photo || ""} alt={chatConv.name} onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer", willChange:"transform"}}/>
+                  <div className="chat-hinfo" onClick={() => setViewProfile(chatConv)} style={{cursor:"pointer"}}>
                     <div className="chat-hname">{chatConv.name}</div>
                     <div className="chat-hstatus">{chatConv.online ? "● En ligne" : "Hors ligne"}</div>
                   </div>
                   <div className="chat-hmore">⋯</div>
                 </div>
                 <div className="chat-msgs">
-                  {chatConv.chat.map((m, i) => (
-                    <div key={i}>
-                      <div className={`msg-row ${m.from}`}><div className={`bubble ${m.from}`}>{m.text}</div></div>
-                      <div className={`msg-row ${m.from}`}><div className="btime">{m.time}</div></div>
+                  {chatLoading && <div style={{textAlign:"center",color:"rgba(255,255,255,0.4)",padding:20}}>Chargement...</div>}
+                  {!chatLoading && realMsgs.length === 0 && (
+                    <div style={{textAlign:"center",color:"rgba(255,255,255,0.4)",padding:20,fontSize:13}}>
+                      Dis bonjour à {openChat?.name} ! 👋
                     </div>
-                  ))}
+                  )}
+                  {realMsgs.map((m, i) => {
+                    const isMe = m.sender_id === currentUser?.id;
+                    const t = new Date(m.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+                    return (
+                      <div key={m.id || i}>
+                        <div className={`msg-row ${isMe?"me":"them"}`}>
+                          <div className={`bubble ${isMe?"me":"them"}`}>{m.text || m.content}</div>
+                        </div>
+                        <div className={`msg-row ${isMe?"me":"them"}`}>
+                          <div className="btime">{t}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="chat-bar">
                   <textarea className="chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)}
@@ -1451,25 +2180,227 @@ export default function AuraApp() {
             )}
 
             {/* ── PROFIL ── */}
+            {tab === "premium" && (
+              <div style={{
+                flex:1, overflowY:"auto", padding:"24px 20px",
+                display:"flex", flexDirection:"column", gap:16,
+              }}>
+                {/* Header */}
+                <div style={{textAlign:"center", padding:"20px 0 10px"}}>
+                  <div style={{fontSize:48, marginBottom:8}}>👑</div>
+                  <div style={{fontSize:24, fontWeight:700, color:"#fff", marginBottom:6}}>Aura Premium</div>
+                  <div style={{fontSize:14, color:"rgba(255,255,255,0.6)"}}>Débloquez toutes les fonctionnalités</div>
+                </div>
+
+                {/* Features */}
+                {[
+                  { icon:"♾️", title:"Likes illimités", desc:"Swipez sans limite chaque jour" },
+                  { icon:"👀", title:"Voir qui vous a liké", desc:"Accédez à la liste complète" },
+                  { icon:"⚡", title:"Boost de profil", desc:"Soyez vu 10x plus souvent" },
+                  { icon:"🔄", title:"Retour en arrière", desc:"Revenez sur un profil passé" },
+                  { icon:"🌍", title:"Filtres avancés", desc:"Âge, distance, centres d'intérêt" },
+                  { icon:"✅", title:"Badge vérifié", desc:"Inspirez confiance aux autres" },
+                ].map((f,i) => (
+                  <div key={i} style={{
+                    background:"rgba(255,255,255,0.05)", borderRadius:16,
+                    padding:"16px", display:"flex", alignItems:"center", gap:14,
+                    border:"1px solid rgba(255,255,255,0.08)",
+                  }}>
+                    <div style={{fontSize:28, minWidth:40, textAlign:"center"}}>{f.icon}</div>
+                    <div>
+                      <div style={{fontSize:15, fontWeight:600, color:"#fff"}}>{f.title}</div>
+                      <div style={{fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:2}}>{f.desc}</div>
+                    </div>
+                    <div style={{marginLeft:"auto", color:"#E8A050"}}>✓</div>
+                  </div>
+                ))}
+
+                {/* Plans */}
+                <div style={{marginTop:8}}>
+                  <div style={{fontSize:16, fontWeight:600, color:"#fff", marginBottom:12}}>Choisissez votre plan</div>
+                  {[
+                    { label:"1 mois", price:"19.99€", per:"mois", popular:false },
+                    { label:"6 mois", price:"11.99€", per:"mois", popular:true, total:"71.94€" },
+                    { label:"12 mois", price:"7.99€", per:"mois", popular:false, total:"95.88€" },
+                  ].map((plan,i) => (
+                    <div key={i} onClick={() => showToast("💳 Paiement bientôt disponible !")} style={{
+                      background: plan.popular ? "linear-gradient(135deg,#E8647A,#E8A050)" : "rgba(255,255,255,0.05)",
+                      borderRadius:14, padding:"14px 18px", marginBottom:10,
+                      display:"flex", alignItems:"center", justifyContent:"space-between",
+                      border: plan.popular ? "none" : "1px solid rgba(255,255,255,0.1)",
+                      cursor:"pointer", position:"relative",
+                    }}>
+                      {plan.popular && <div style={{
+                        position:"absolute", top:-8, right:12,
+                        background:"#fff", color:"#E8647A", fontSize:10,
+                        fontWeight:700, borderRadius:20, padding:"2px 8px",
+                      }}>POPULAIRE</div>}
+                      <div>
+                        <div style={{fontSize:15, fontWeight:600, color:"#fff"}}>{plan.label}</div>
+                        {plan.total && <div style={{fontSize:12, color:"rgba(255,255,255,0.7)"}}>soit {plan.total} facturé d'un coup</div>}
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:20, fontWeight:700, color:"#fff"}}>{plan.price}</div>
+                        <div style={{fontSize:11, color:"rgba(255,255,255,0.7)"}}>/{plan.per}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{textAlign:"center", fontSize:11, color:"rgba(255,255,255,0.3)", paddingBottom:20}}>
+                  Résiliable à tout moment • Sans engagement
+                </div>
+              </div>
+            )}
             {tab === "profile" && (
               <div className="profile-scr">
-                <div className="profile-cover">
-                  <img src={PROFILES[1].photo} alt="cover"/>
+                <div className="profile-cover" style={{position:"relative"}}>
+                  <img src={coverUrl || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80"} alt="cover" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                   <div className="cover-ov"/>
+                  <label style={{
+                    position:"absolute",top:12,right:12,
+                    background:"rgba(0,0,0,0.55)",backdropFilter:"blur(8px)",
+                    borderRadius:20,padding:"6px 12px",
+                    color:"white",fontSize:12,fontWeight:600,cursor:"pointer",
+                    border:"1px solid rgba(255,255,255,0.2)"
+                  }}>
+                    📷 Couverture
+                    <input type="file" accept="image/*" style={{display:"none"}}
+                           onChange={e => e.target.files[0] && uploadCover(e.target.files[0])}/>
+                  </label>
                 </div>
                 <div className="profile-av-row">
-                  <img className="profile-av" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80" alt="me"/>
-                  <button className="edit-btn">✏️ Modifier</button>
+                  <div style={{position:"relative",display:"inline-block"}}>
+                    <img className="profile-av" 
+                         src={avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80"} 
+                         alt="me"
+                         style={{width:88,height:88,borderRadius:"50%",objectFit:"cover",border:"3px solid var(--rose)"}}/>
+                    <label style={{
+                      position:"absolute",bottom:0,right:0,
+                      background:"var(--rose)",borderRadius:"50%",
+                      width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",
+                      cursor:"pointer",fontSize:14,border:"2px solid #111"
+                    }}>
+                      {avatarUploading ? "⏳" : "📷"}
+                      <input type="file" accept="image/*" style={{display:"none"}}
+                             onChange={e => e.target.files[0] && uploadAvatar(e.target.files[0])}/>
+                    </label>
+                  </div>
+                  <button className="edit-btn" onClick={() => setEditingProfile(true)}>✏️ Modifier</button>
                 </div>
+                {/* ── MULTI PHOTO GRID ── */}
+                <div style={{padding:"0 20px 16px",display:"flex",gap:8}}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{
+                      flex:1, aspectRatio:"1", borderRadius:16,
+                      background:"rgba(255,255,255,0.06)",
+                      border:"1.5px dashed rgba(255,255,255,0.15)",
+                      position:"relative", overflow:"hidden",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                    }}>
+                      {profilePhotos[i] ? (
+                        <>
+                          <img src={profilePhotos[i]} style={{width:"100%",height:"100%",objectFit:"cover"}} alt={`photo${i}`}/>
+                          <div onClick={() => removeExtraPhoto(i)} style={{
+                            position:"absolute",top:4,right:4,
+                            background:"rgba(0,0,0,0.6)",borderRadius:"50%",
+                            width:22,height:22,display:"flex",alignItems:"center",
+                            justifyContent:"center",fontSize:12,cursor:"pointer",color:"#fff",
+                          }}>✕</div>
+                          {i === 0 && <div style={{position:"absolute",bottom:4,left:4,background:"var(--rose)",borderRadius:8,padding:"2px 6px",fontSize:10,fontWeight:700,color:"#fff"}}>principale</div>}
+                        </>
+                      ) : (
+                        <label style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexDirection:"column",gap:4}}>
+                          <span style={{fontSize:24,opacity:0.4}}>+</span>
+                          <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>Photo {i+1}</span>
+                          <input type="file" accept="image/*" style={{display:"none"}} onChange={e => e.target.files[0] && uploadExtraPhoto(e.target.files[0])}/>
+                        </label>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 <div className="profile-names">
-                  <div className="pname">Thomas, 28</div>
-                  <div className="ptag2">💼 Développeur · Paris</div>
+                  <div className="pname">{profileName || "Ton prénom"}{profileAge ? `, ${profileAge}` : ""}</div>
+                  <div className="ptag2">{profileJob ? `💼 ${profileJob}` : ""}{profileJob && profileCity ? " · " : ""}{profileCity || ""}</div>
+                  {profileBio && <div style={{fontSize:13,color:"var(--muted)",marginTop:4,padding:"0 16px",textAlign:"center"}}>{profileBio}</div>}
                 </div>
                 <div className="pstats">
                   <div className="pstat"><div className="pstat-n">247</div><div className="pstat-l">Likes</div></div>
                   <div className="pstat"><div className="pstat-n">18</div><div className="pstat-l">Matchs</div></div>
                   <div className="pstat"><div className="pstat-n">94%</div><div className="pstat-l">Profil</div></div>
                 </div>
+
+                {/* Modal édition profil */}
+                {editingProfile && (
+                  <div style={{
+                    position:"fixed",inset:0,zIndex:100,
+                    background:"rgba(0,0,0,0.85)",
+                    display:"flex",flexDirection:"column",
+                    alignItems:"center",justifyContent:"center",
+                    padding:"24px"
+                  }}>
+                    <div style={{
+                      background:"var(--navy-mid)",borderRadius:20,
+                      padding:"24px",width:"100%",maxWidth:360,
+                      border:"1px solid var(--border)"
+                    }}>
+                      <div style={{fontSize:18,fontWeight:700,color:"white",marginBottom:20,textAlign:"center"}}>
+                        ✏️ Mon profil
+                      </div>
+                      {[
+                        {label:"Prénom",val:profileName,set:setProfileName,placeholder:"Ton prénom"},
+                        {label:"Âge",val:profileAge,set:setProfileAge,placeholder:"25",type:"number"},
+                        {label:"Ville",val:profileCity,set:setProfileCity,placeholder:"Paris"},
+                        {label:"Métier",val:profileJob,set:setProfileJob,placeholder:"Designer, Dev..."},
+                      ].map(({label,val,set,placeholder,type}) => (
+                        <div key={label} style={{marginBottom:14}}>
+                          <div style={{fontSize:12,color:"var(--muted)",marginBottom:4,fontWeight:600}}>{label}</div>
+                          <input
+                            type={type||"text"}
+                            value={val}
+                            onChange={e => set(e.target.value)}
+                            placeholder={placeholder}
+                            style={{
+                              width:"100%",padding:"12px 14px",
+                              background:"rgba(255,255,255,0.08)",
+                              border:"1px solid var(--border)",
+                              borderRadius:10,color:"white",fontSize:15,
+                              outline:"none"
+                            }}
+                          />
+                        </div>
+                      ))}
+                      <div style={{marginBottom:14}}>
+                        <div style={{fontSize:12,color:"var(--muted)",marginBottom:4,fontWeight:600}}>Bio</div>
+                        <textarea
+                          value={profileBio}
+                          onChange={e => setProfileBio(e.target.value)}
+                          placeholder="Dis quelque chose sur toi..."
+                          rows={3}
+                          style={{
+                            width:"100%",padding:"12px 14px",
+                            background:"rgba(255,255,255,0.08)",
+                            border:"1px solid var(--border)",
+                            borderRadius:10,color:"white",fontSize:15,
+                            outline:"none",resize:"none"
+                          }}
+                        />
+                      </div>
+                      <div style={{display:"flex",gap:10,marginTop:8}}>
+                        <button onClick={() => setEditingProfile(false)} style={{
+                          flex:1,padding:"12px",borderRadius:12,border:"1px solid var(--border)",
+                          background:"transparent",color:"var(--muted)",fontSize:14,cursor:"pointer"
+                        }}>Annuler</button>
+                        <button onClick={saveProfile} style={{
+                          flex:2,padding:"12px",borderRadius:12,border:"none",
+                          background:"linear-gradient(135deg,var(--rose),var(--amber))",
+                          color:"white",fontSize:14,fontWeight:700,cursor:"pointer"
+                        }}>Enregistrer</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Section enregistrement */}
                 <div className="rec-section">
@@ -1481,11 +2412,12 @@ export default function AuraApp() {
                       <div className="rec-lbl">Message vocal</div>
                       <div className="rec-sub">{recHas.voice ? "✓ Enregistré" : "10 secondes"}</div>
                     </div>
-                    <div className={`rec-card ${recHas.video ? "has-rec" : ""}`} onClick={() => startRec("video")}>
+                    <div className={`rec-card ${recHas.video ? "has-rec" : ""}`}
+                      onClick={() => recHas.video ? setShowPlayer("video") : startRec("video")}>
                       {recHas.video && <div className="rec-indicator"/>}
                       <div className="rec-icon">🎬</div>
                       <div className="rec-lbl">Vidéo courte</div>
-                      <div className="rec-sub">{recHas.video ? "✓ Enregistrée" : "10 secondes"}</div>
+                      <div className="rec-sub">{recHas.video ? "▶ Visionner" : "10 secondes"}</div>
                     </div>
                   </div>
                 </div>
@@ -1517,25 +2449,147 @@ export default function AuraApp() {
                     </div>
                   ))}
                 </div>
+
+                {/* Bouton déconnexion */}
+                <div style={{ padding:"16px 20px 32px" }}>
+                  <button onClick={async () => {
+                    try { await supabase.auth.signOut(); } catch(e) {}
+                    localStorage.removeItem("aura_token");
+                    localStorage.removeItem("aura_user_id");
+                    setCurrentUser(null);
+                    setProfileName(""); setProfileAge(""); setProfileCity("");
+                    setProfileBio(""); setProfileJob(""); setAvatarUrl(null); setCoverUrl(null);
+                    setDbMatches([]); setMsgs(MESSAGES_DATA);
+                    setScreen("splash");
+                  }} style={{
+                    width:"100%", padding:"14px",
+                    borderRadius:14, border:"1px solid rgba(232,100,122,0.35)",
+                    background:"rgba(232,100,122,0.08)",
+                    color:"#E8647A", fontSize:15, fontWeight:700,
+                    cursor:"pointer", letterSpacing:"0.5px"
+                  }}>
+                    🚪 Se déconnecter
+                  </button>
+                  <button onClick={seedFakeProfiles} style={{
+                    width:"100%", padding:"14px", borderRadius:16,
+                    background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+                    color:"rgba(255,255,255,0.6)", fontSize:14, cursor:"pointer", marginTop:8,
+                  }}>
+                    🧪 Ajouter profils de test
+                  </button>
+                  <button onClick={setupPushNotifications} style={{
+                    width:"100%", padding:"14px", borderRadius:16,
+                    background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+                    color:"rgba(255,255,255,0.6)", fontSize:14, cursor:"pointer", marginTop:8,
+                  }}>
+                    🔔 Activer les notifications
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+            {/* ── LIKES RECEIVED PANEL ── */}
+            {showLikesPanel && (
+              <div style={{position:"absolute",inset:0,zIndex:40,background:"#0a0e1a",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+                {/* Header */}
+                <div style={{padding:"16px 20px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+                  <div onClick={() => setShowLikesPanel(false)} style={{fontSize:22,cursor:"pointer",color:"#E8647A",padding:4}}>←</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:20,fontWeight:700,color:"#fff",fontFamily:"'Cormorant Garamond',serif"}}>Qui vous a liké</div>
+                    <div style={{fontSize:13,color:"rgba(255,255,255,0.4)"}}>{likesReceived.length} personne{likesReceived.length!==1?"s":""}</div>
+                  </div>
+                  <div style={{background:"linear-gradient(135deg,#E8647A,#E8A050)",borderRadius:12,padding:"6px 14px",fontSize:13,fontWeight:700,color:"#fff"}}>
+                    💛 {likesReceived.length}
+                  </div>
+                </div>
+                {/* Grid */}
+                <div style={{flex:1,overflowY:"auto",padding:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  {likesReceived.length === 0 && (
+                    <div style={{gridColumn:"1/-1",textAlign:"center",color:"rgba(255,255,255,0.3)",padding:60,fontSize:14}}>
+                      Personne ne vous a liké encore 😔<br/>Continuez à swiper !
+                    </div>
+                  )}
+                  {likesReceived.map(p => (
+                    <div key={p.id} onClick={() => setViewProfile(p)} style={{borderRadius:20,overflow:"hidden",position:"relative",aspectRatio:"3/4",cursor:"pointer",background:"#1a1f35"}}>
+                      {p.photo
+                        ? <img src={p.photo} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        : <div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#E8647A,#E8A050)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>{p.name[0]}</div>
+                      }
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.85) 0%,transparent 50%)"}}/>
+                      <div style={{position:"absolute",bottom:10,left:10,right:10}}>
+                        <div style={{color:"#fff",fontWeight:700,fontSize:16}}>{p.name}{p.age ? `, ${p.age}` : ""}</div>
+                        {p.city && <div style={{color:"rgba(255,255,255,0.6)",fontSize:12}}>📍 {p.city}</div>}
+                      </div>
+                      <div style={{position:"absolute",top:8,right:8,background:"rgba(232,100,122,0.9)",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>💛</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* BOTTOM NAV */}
             <div className="bottom-nav">
               {[
-                { id:"discover", icon:"🔮", lbl:"Découvrir" },
+                { id:"discover", icon:"✦", lbl:"Découvrir" },
                 { id:"messages", icon:"💬", lbl:"Messages", badge:3 },
                 { id:"premium",  icon:"👑", lbl:"Premium" },
                 { id:"profile",  icon:"👤", lbl:"Profil" },
               ].map(t => (
                 <div key={t.id} className={`nav-item ${tab===t.id?"active":""}`}
-                  onClick={() => { setTab(t.id); if (t.id!=="messages") setOpenChat(null); }}>
+                  onClick={() => { setTab(t.id); if (t.id!=="messages") setOpenChat(null); if (t.id==="discover") setNewLikes(0); }}>
                   {t.badge && tab!=="messages" && <div className="nav-badge">{t.badge}</div>}
+                  {t.likeBadge > 0 && <div className="nav-badge" style={{background:"#E8A050"}}>{t.likeBadge}</div>}
                   <div className="nav-icon">{t.icon}</div>
                   <div className="nav-label">{t.lbl}</div>
                 </div>
               ))}
             </div>
+
+            {/* ── LECTEUR MEDIA ── */}
+            {showPlayer && (
+              <div style={{
+                position:"fixed",inset:0,zIndex:300,
+                background:"rgba(10,15,30,0.97)",
+                display:"flex",flexDirection:"column",
+                alignItems:"center",justifyContent:"center",
+                padding:"24px"
+              }}>
+                <div style={{fontSize:36,marginBottom:16}}>
+                  {showPlayer === "voice" ? "🎤" : "🎬"}
+                </div>
+                <div style={{fontSize:20,fontWeight:700,color:"white",marginBottom:24,fontFamily:"'Cormorant Garamond',serif"}}>
+                  {showPlayer === "voice" ? "Mon message vocal" : "Ma vidéo"}
+                </div>
+                {showPlayer === "voice" && audioUrlRef.current && (
+                  <audio controls src={audioSrcUrl}
+                    style={{width:"100%",maxWidth:320,borderRadius:12}}
+                    autoPlay
+                  />
+                )}
+                {showPlayer === "video" && videoPreviewUrl && (
+                  <video controls src={videoPreviewUrl} playsInline autoPlay
+                    style={{width:"100%",maxWidth:320,borderRadius:16,background:"#000",maxHeight:400}}
+                  />
+                )}
+                <div style={{display:"flex",gap:12,marginTop:28,width:"100%",maxWidth:320}}>
+                  <button onClick={() => { const t = showPlayer; setShowPlayer(null); startRec(t); }} style={{
+                    flex:1,padding:"12px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",
+                    background:"transparent",color:"white",fontSize:13,cursor:"pointer"
+                  }}>🔄 Refaire</button>
+                  <button onClick={() => {
+                    const blob = audioBlobRef.current;
+                    const t = showPlayer;
+                    setShowPlayer(null);
+                    if (blob) uploadRecording(blob, t);
+                  }} style={{
+                    flex:2,padding:"12px",borderRadius:12,border:"none",
+                    background:"linear-gradient(135deg,#E8647A,#E8A050)",
+                    color:"white",fontSize:14,fontWeight:700,cursor:"pointer"
+                  }}>✓ Garder</button>
+                </div>
+              </div>
+            )}
 
             {/* ── ENREGISTREMENT EN COURS ── */}
             {recording && (
@@ -1647,7 +2701,30 @@ export default function AuraApp() {
                     </div>
                   </div>
                 </div>
-                <button className="filter-apply" onClick={() => { setShowFilters(false); showToast("✅ Filtres appliqués"); }}>
+                  <div className="fgroup">
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div className="flabel" style={{marginBottom:0}}>En ligne uniquement</div>
+                      <div onClick={() => setOnlineOnly(v => !v)} style={{
+                        width:48, height:26, borderRadius:13,
+                        background: onlineOnly ? "var(--rose)" : "rgba(255,255,255,0.12)",
+                        position:"relative", cursor:"pointer",
+                        transition:"background .2s", flexShrink:0
+                      }}>
+                        <div style={{
+                          position:"absolute", top:3,
+                          left: onlineOnly ? 25 : 3,
+                          width:20, height:20, borderRadius:"50%",
+                          background:"white", transition:"left .2s",
+                          boxShadow:"0 1px 4px rgba(0,0,0,0.3)"
+                        }}/>
+                      </div>
+                    </div>
+                    {onlineOnly && <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>🟢 Personnes connectées récemment</div>}
+                  </div>
+                <button className="filter-apply" onClick={() => {
+                  setShowFilters(false);
+                  showToast(onlineOnly ? "🟢 En ligne uniquement activé" : "✅ Filtres appliqués");
+                }}>
                   Appliquer les filtres
                 </button>
               </div>
@@ -1668,12 +2745,121 @@ export default function AuraApp() {
                   <img className="match-ph" src={matchedProfile.photo} alt={matchedProfile.name}/>
                 </div>
                 <button className="match-btn match-btn-p"
-                  onClick={() => { setShowMatch(false); setTab("messages"); setOpenChat(msgs[0]); }}>
+                  onClick={async () => {
+                    setShowMatch(false);
+                    setTab("messages");
+                    // Cherche dans dbMatches par id du profil matché
+                    let conv = dbMatches.find(m => m.id === matchedProfile?.id);
+                    if (!conv) {
+                      // Pas encore chargé — recharge et réessaie
+                      await loadMatches();
+                      conv = dbMatches.find(m => m.id === matchedProfile?.id);
+                    }
+                    if (!conv) {
+                      // Fetch direct en DB
+                      const uid = currentUser.id;
+                      const pid = matchedProfile.id;
+                      const u1 = uid < pid ? uid : pid;
+                      const u2 = uid < pid ? pid : uid;
+                      const rows = await supabase.select("matches", `?user1_id=eq.${u1}&user2_id=eq.${u2}&limit=1`);
+                      if (Array.isArray(rows) && rows[0]) {
+                        conv = { ...matchedProfile, matchId: rows[0].id };
+                      }
+                    }
+                    if (conv) {
+                      setOpenChat(conv);
+                      loadMessages(conv.matchId);
+                    }
+                  }}>
                   💬 Envoyer un message
                 </button>
                 <button className="match-btn match-btn-s" onClick={() => setShowMatch(false)}>
                   Continuer à explorer
                 </button>
+              </div>
+            )}
+
+
+            {/* ── PROFIL MODAL ── */}
+            {viewProfile && (
+              <div onClick={() => setViewProfile(null)} style={{
+                position:"absolute", inset:0, zIndex:100,
+                background:"rgba(0,0,0,0.85)", display:"flex",
+                flexDirection:"column", overflowY:"auto",
+              }}>
+                <div onClick={e => e.stopPropagation()} style={{
+                  background:"linear-gradient(180deg,#0d1220 0%,#111828 100%)",
+                  borderRadius:"32px 32px 0 0", marginTop:"auto",
+                  minHeight:"80vh", display:"flex", flexDirection:"column",
+                }}>
+                  {/* Photo */}
+                  <div style={{position:"relative", height:360, flexShrink:0}}>
+                    {(viewProfile.photos && viewProfile.photos.length > 0) || viewProfile.photo ? (
+                      <div style={{width:"100%",height:"100%",position:"relative"}}>
+                        <img src={(viewProfile.photos&&viewProfile.photos[0])||viewProfile.photo} alt={viewProfile.name} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"32px 32px 0 0"}}/>
+                        {viewProfile.photos && viewProfile.photos.length > 1 && (
+                          <div style={{position:"absolute",bottom:60,left:0,right:0,display:"flex",justifyContent:"center",gap:6}}>
+                            {viewProfile.photos.map((_,i) => (
+                              <div key={i} style={{width:i===0?20:6,height:6,borderRadius:3,background:i===0?"#fff":"rgba(255,255,255,0.5)"}}/>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#E8647A,#E8A050)",borderRadius:"32px 32px 0 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:72}}>{viewProfile.name?.[0]}</div>
+                    )}
+                    <div style={{position:"absolute",inset:0,background:"linear-gradient(transparent 50%,#0d1220 100%)",borderRadius:"32px 32px 0 0"}}/>
+                    <div onClick={() => setViewProfile(null)} style={{
+                      position:"absolute",top:16,right:16,width:36,height:36,
+                      background:"rgba(0,0,0,0.5)",borderRadius:"50%",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      cursor:"pointer",fontSize:18,color:"#fff",
+                    }}>✕</div>
+                    <div style={{position:"absolute",bottom:16,left:20}}>
+                      <div style={{fontSize:26,fontWeight:700,color:"#fff"}}>{viewProfile.name}, {viewProfile.age}</div>
+                      <div style={{fontSize:14,color:"rgba(255,255,255,0.7)"}}>{viewProfile.job} · {viewProfile.city}</div>
+                    </div>
+                  </div>
+
+                  {/* Bio */}
+                  <div style={{padding:"20px 20px 0"}}>
+                    {viewProfile.bio && (
+                      <div style={{background:"rgba(255,255,255,0.05)",borderRadius:16,padding:16,marginBottom:16}}>
+                        <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:6,fontWeight:600,letterSpacing:1}}>À PROPOS</div>
+                        <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",lineHeight:1.6}}>{viewProfile.bio}</div>
+                      </div>
+                    )}
+
+                    {/* Audio / Video */}
+                    {(viewProfile.voice_url || viewProfile.hasVoice) && (
+                      <div style={{background:"rgba(255,255,255,0.05)",borderRadius:16,padding:16,marginBottom:12}}>
+                        <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:10,fontWeight:600,letterSpacing:1}}>PRÉSENTATION VOCALE</div>
+                        <audio controls src={viewProfile.voice_url} style={{width:"100%",height:40}} />
+                      </div>
+                    )}
+                    {(viewProfile.video_url || viewProfile.hasVideo) && (
+                      <div style={{background:"rgba(255,255,255,0.05)",borderRadius:16,padding:16,marginBottom:12}}>
+                        <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:10,fontWeight:600,letterSpacing:1}}>PRÉSENTATION VIDÉO</div>
+                        <video controls src={viewProfile.video_url} style={{width:"100%",borderRadius:12,maxHeight:200}} />
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{display:"flex",gap:12,padding:"16px 0 32px"}}>
+                      <div onClick={() => { doPass(); setViewProfile(null); }} style={{
+                        flex:1,height:52,background:"rgba(255,255,255,0.08)",
+                        borderRadius:26,display:"flex",alignItems:"center",
+                        justifyContent:"center",fontSize:24,cursor:"pointer",
+                      }}>👎</div>
+                      <div onClick={() => { doLike(); setViewProfile(null); }} style={{
+                        flex:2,height:52,background:"linear-gradient(135deg,#E8647A,#E8A050)",
+                        borderRadius:26,display:"flex",alignItems:"center",
+                        justifyContent:"center",gap:8,cursor:"pointer",
+                        fontSize:16,fontWeight:700,color:"#fff",
+                      }}>💛 J'aime</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
