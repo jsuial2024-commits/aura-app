@@ -667,7 +667,7 @@ body{
 }
 .conv:hover{background:var(--glass);}
 .conv-av-wrap{position:relative;flex-shrink:0;}
-.conv-av{width:56px;height:56px;border-radius:50%;object-fit:cover;
+.conv-av{width:56px;height:56px;min-width:56px;border-radius:50%;
   border:2px solid var(--border);}
 .online-dot{
   width:13px;height:13px;border-radius:50%;background:#4ECDC4;
@@ -1573,7 +1573,12 @@ export default function AuraApp() {
           createdAt: m.created_at,
         };
       }));
-      setDbMatches(enriched);
+      setDbMatches(prev => {
+        // Only update if matches actually changed
+        if (prev.length === enriched.length &&
+            prev.every((m,i) => m.matchId === enriched[i]?.matchId)) return prev;
+        return enriched;
+      });
       // Merge into msgs state for chat
       setMsgs(prev => {
         const existingIds = new Set(enriched.map(m => m.id));
@@ -2251,10 +2256,7 @@ export default function AuraApp() {
                     <div key={p.id} className="story" onClick={() => { setOpenChat(p); loadMessages(p.matchId); }}>
                       <div className="story-ring">
                         <div className="story-inner">
-                          {p.photo
-                            ? <img src={p.photo} alt={p.name}/>
-                            : <div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#E8647A,#E8A050)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"white"}}>{p.name[0]}</div>
-                          }
+                          <div style={{width:"100%",height:"100%",backgroundImage:p.photo?`url(${p.photo})`:"none",backgroundSize:"cover",backgroundPosition:"center",backgroundColor:"#2a2f45",borderRadius:"50%"}}/>
                         </div>
                       </div>
                       <span className="story-name">{p.name}</span>
@@ -2265,7 +2267,7 @@ export default function AuraApp() {
                   {dbMatches.map(c => (
                     <div key={c.id} className="conv" onClick={() => { setOpenChat(c); loadMessages(c.matchId); }}>
                       <div className="conv-av-wrap">
-                        <img className="conv-av" src={c.photo} alt={c.name}/>
+                        <div className="conv-av" style={{backgroundImage:c.photo?`url(${c.photo})`:"none",backgroundSize:"cover",backgroundPosition:"center",backgroundColor:"#2a2f45"}}/>
                         {c.online && <div className="online-dot"/>}
                       </div>
                       <div className="conv-info">

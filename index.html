@@ -820,7 +820,7 @@ body{
 }
 .conv:hover{background:var(--glass);}
 .conv-av-wrap{position:relative;flex-shrink:0;}
-.conv-av{width:56px;height:56px;border-radius:50%;object-fit:cover;
+.conv-av{width:56px;height:56px;min-width:56px;border-radius:50%;
   border:2px solid var(--border);}
 .online-dot{
   width:13px;height:13px;border-radius:50%;background:#4ECDC4;
@@ -1860,7 +1860,11 @@ body{
             createdAt: m.created_at
           };
         }));
-        setDbMatches(enriched);
+        setDbMatches(prev => {
+          // Only update if matches actually changed
+          if (prev.length === enriched.length && prev.every((m, i) => m.matchId === enriched[i]?.matchId)) return prev;
+          return enriched;
+        });
         // Merge into msgs state for chat
         setMsgs(prev => {
           const existingIds = new Set(enriched.map(m => m.id));
@@ -2951,21 +2955,17 @@ body{
       className: "story-ring"
     }, /*#__PURE__*/React.createElement("div", {
       className: "story-inner"
-    }, p.photo ? /*#__PURE__*/React.createElement("img", {
-      src: p.photo,
-      alt: p.name
-    }) : /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("div", {
       style: {
         width: "100%",
         height: "100%",
-        background: "linear-gradient(135deg,#E8647A,#E8A050)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 20,
-        color: "white"
+        backgroundImage: p.photo ? `url(${p.photo})` : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundColor: "#2a2f45",
+        borderRadius: "50%"
       }
-    }, p.name[0]))), /*#__PURE__*/React.createElement("span", {
+    }))), /*#__PURE__*/React.createElement("span", {
       className: "story-name"
     }, p.name)))), /*#__PURE__*/React.createElement("div", {
       className: "conv-list"
@@ -2978,10 +2978,14 @@ body{
       }
     }, /*#__PURE__*/React.createElement("div", {
       className: "conv-av-wrap"
-    }, /*#__PURE__*/React.createElement("img", {
+    }, /*#__PURE__*/React.createElement("div", {
       className: "conv-av",
-      src: c.photo,
-      alt: c.name
+      style: {
+        backgroundImage: c.photo ? `url(${c.photo})` : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundColor: "#2a2f45"
+      }
     }), c.online && /*#__PURE__*/React.createElement("div", {
       className: "online-dot"
     })), /*#__PURE__*/React.createElement("div", {
