@@ -18,7 +18,7 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div style="color:white;padding:20px;font-size:16px">Chargement...</div></div>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script>
@@ -1992,7 +1992,7 @@ body{
       if (!openChat?.matchId) return;
       // First load with loading indicator
       setChatLoading(true);
-      loadMessages(openChat.matchId).finally(() => setChatLoading(false));
+      Promise.resolve(loadMessages(openChat.matchId)).finally(() => setChatLoading(false));
       const t = setInterval(() => {
         if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
       }, 8000);
@@ -4626,6 +4626,12 @@ body{
   }
   window.AuraApp = AuraApp;
 })();</script>
-  <script>ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(window.AuraApp));</script>
+  <script>
+    try {
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(window.AuraApp));
+    } catch(e) {
+      document.getElementById('root').innerHTML = '<div style="color:red;padding:20px;font-size:14px">Erreur: ' + e.message + '</div>';
+    }
+  </script>
 </body>
 </html>

@@ -1669,7 +1669,7 @@ export default function AuraApp() {
     if (!openChat?.matchId) return;
     // First load with loading indicator
     setChatLoading(true);
-    loadMessages(openChat.matchId).finally(() => setChatLoading(false));
+    Promise.resolve(loadMessages(openChat.matchId)).finally(() => setChatLoading(false));
     const t = setInterval(() => {
       if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
     }, 8000);
