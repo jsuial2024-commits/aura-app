@@ -691,6 +691,8 @@ body{
 /* ─────────────────────────────────────────
    CHAT
 ───────────────────────────────────────── */
+.chat-mode * { animation-play-state: paused !important; }
+.chat-mode .bg-overlay, .chat-mode canvas { display: none !important; }
 .chat{position:absolute;top:0;left:0;right:0;bottom:90px;display:flex;flex-direction:column;overflow:hidden;background:#0a0e1a;z-index:10;isolation:isolate;}
 .chat-header{
   padding:8px 18px 12px;
@@ -701,8 +703,9 @@ body{
   transform:translateZ(0);
 }
 .chat-back{font-size:22px;cursor:pointer;color:var(--rose);padding:4px;}
-.chat-av{width:44px;height:44px;border-radius:50%;object-fit:cover;
-  border:2px solid rgba(232,160,80,.4);}
+.chat-av{width:44px;height:44px;min-width:44px;border-radius:50%;object-fit:cover;
+  border:2px solid rgba(232,160,80,.4);transform:translateZ(0);backface-visibility:hidden;
+  will-change:transform;}
 .chat-hinfo{flex:1;}
 .chat-hname{font-size:16px;font-weight:700;}
 .chat-hstatus{font-size:12px;color:#4ECDC4;font-weight:600;}
@@ -1660,7 +1663,7 @@ export default function AuraApp() {
     loadMessages(openChat.matchId); // load immediately on open
     const t = setInterval(() => {
       if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
-    }, 5000);
+    }, 8000);
     return () => { clearInterval(t); };
   }, [openChat?.matchId]);
 
@@ -1691,8 +1694,11 @@ export default function AuraApp() {
   }, [currentUser]);
 
   useEffect(() => {
-    // Pause background animation when in chat or messages tab to avoid re-render flicker
-    if (openChat || tab === "messages") return;
+    // Stop background animation completely when in chat
+    if (openChat || tab === "messages") {
+      setBgCrossfade(false);
+      return;
+    }
     const t = setInterval(() => {
       const next = (bgIdx + 1) % BG_SCENES.length;
       setBgNext(next);
@@ -2020,7 +2026,7 @@ export default function AuraApp() {
           <div style={{position:"absolute",inset:0,zIndex:0,willChange:"contents"}}>
             {!openChat && <SceneBg sceneIndex={bgIdx} opacity={1} />}
             {!openChat && <SceneBg sceneIndex={bgNext} opacity={bgCrossfade ? 1 : 0} transition="opacity 1.8s ease" />}
-            <div className="bg-overlay"/>
+            {!openChat && <div className="bg-overlay"/>}
           </div>
         </div>
 
@@ -2080,7 +2086,7 @@ export default function AuraApp() {
       )}
 
       {screen === "splash" && (
-          <div className="screen">
+          <div className={`screen${openChat ? " chat-mode" : ""}`}>
             <div className="splash">
               {/* status bar haut */}
 
