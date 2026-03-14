@@ -1477,21 +1477,23 @@ export default function AuraApp() {
 
   async function loadMessages(matchId) {
     if (!matchId) return;
-    setChatLoading(true);
     try {
       const token = localStorage.getItem("aura_token");
       const data = await supabase.select("messages",
         `?match_id=eq.${matchId}&order=created_at.asc&limit=100`);
       if (Array.isArray(data)) {
         setRealMsgs(prev => {
-          if (prev.length === data.length && prev[prev.length-1]?.id === data[data.length-1]?.id) return prev; // No change
+          // Strict equality check — only update if something actually changed
+          if (prev.length === data.length &&
+              (prev.length === 0 || prev[prev.length-1]?.id === data[data.length-1]?.id)) {
+            return prev; // Return SAME reference — React skips re-render
+          }
           const newOnes = data.filter(m => !prev.find(p => p.id === m.id) && m.sender_id !== currentUser?.id);
           if (newOnes.length > 0) sendLocalNotif("💬 Nouveau message", newOnes[newOnes.length-1].text || "...");
           return data;
         });
       }
     } catch(e) { console.error("loadMessages:", e); }
-    setChatLoading(false);
   }
 
   async function sendRealMsg(matchId, text) {
@@ -1660,7 +1662,9 @@ export default function AuraApp() {
   useEffect(() => {
     activeMatchIdRef.current = openChat?.matchId || null;
     if (!openChat?.matchId) return;
-    loadMessages(openChat.matchId); // load immediately on open
+    // First load with loading indicator
+    setChatLoading(true);
+    loadMessages(openChat.matchId).finally(() => setChatLoading(false));
     const t = setInterval(() => {
       if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
     }, 8000);
@@ -1669,6 +1673,13 @@ export default function AuraApp() {
 
   // Polling: vérifie les nouveaux likes toutes les 30s
   const likeCheckRef = React.useRef(new Date().toISOString());
+
+  // Update chat avatar directly in DOM — bypasses React re-render cycle completely
+  useEffect(() => {
+    if (chatAvRef.current && openChat?.photo) {
+      chatAvRef.current.style.backgroundImage = `url(${openChat.photo})`;
+    }
+  }, [openChat?.id]);
   const activeMatchIdRef = React.useRef(null);
   useEffect(() => {
     if (!currentUser) return;
@@ -2276,7 +2287,7 @@ export default function AuraApp() {
               <div className="chat">
                 <div className="chat-header">
                   <div className="chat-back" onClick={() => { setOpenChat(null); setRealMsgs([]); setShowChatMenu(false); }}>←</div>
-                  <div key={chatConv.id} className="chat-av" onClick={() => setViewProfile(chatConv)}
+                  <div ref={chatAvRef} className="chat-av" onClick={() => setViewProfile(chatConv)}
                      style={{
                        cursor:"pointer",
                        backgroundImage: chatConv.photo ? `url(${chatConv.photo})` : "none",
