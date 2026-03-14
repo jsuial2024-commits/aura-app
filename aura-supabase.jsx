@@ -15,6 +15,16 @@ const FAKE_PROFILES = [
   { id:"88888888-8888-8888-8888-888888888888", name:"Emma", age:22, city:"Nantes", job:"Illustratrice", bio:"Je dessine le monde tel que je voudrais qu'il soit 🖍️", photo_url:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80", photos_urls:["https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80"], latitude:47.21, longitude:-1.55 },
 ];
 
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
 const SUPABASE_KEY = "sb_publishable_WiPfn8gk6OfdVL_2SxbhDg_tEEQpo06";
 
 // Client Supabase léger (sans npm, fetch natif)
@@ -1042,9 +1052,11 @@ export default function AuraApp() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError]     = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
   const [avatarUrl, setAvatarUrl]       = useState(null);
   const [profilePhotos, setProfilePhotos] = useState([]);
   const [cardPhotoIdx, setCardPhotoIdx] = useState(0);
+  const [lastSwiped, setLastSwiped] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [coverUrl, setCoverUrl]         = useState(null);
@@ -1425,6 +1437,7 @@ export default function AuraApp() {
           video_url: p.video_url || null,
           photo: p.photo_url || null,
           photos: p.photos_urls || (p.photo_url ? [p.photo_url] : []),
+          distance: getDistance(userLocation?.lat, userLocation?.lon, p.latitude, p.longitude),
           online: true,
         })) : [];
       if (mapped.length > 0) {
@@ -1596,6 +1609,21 @@ export default function AuraApp() {
           loadMatches();
           setScreen("app");
           setTimeout(() => setupPushNotifications(), 2000);
+          // Get user location
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+              const { latitude, longitude } = pos.coords;
+              setUserLocation({ lat: latitude, lon: longitude });
+              // Save to profile
+              const tok = localStorage.getItem("aura_token");
+              const uid = localStorage.getItem("aura_user_id");
+              fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}`, {
+                method: "PATCH",
+                headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${tok}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ latitude, longitude })
+              });
+            }, () => {});
+          }
         } else { setAuthError(res.error?.message || res.error_description || res.msg || "Email ou mot de passe incorrect. Verifie tes identifiants."); }
       }
     } catch(e) { console.error("handleAuth error:", e); setAuthError("Erreur: " + e.message); }
@@ -1707,7 +1735,7 @@ export default function AuraApp() {
   const doLike = async () => {
     if (!profiles.length || !currentUser) return;
     const p = profiles[0];
-    // Retire le profil immédiatement pour fluidité
+    setLastSwiped({ profile: p, direction: "like" });
     setProfiles(prev => prev.slice(1));
     setCardPhotoIdx(0);
     setBgIdx(i => (i+1) % BG_SCENES.length);
@@ -1758,6 +1786,7 @@ export default function AuraApp() {
   const doPass = async () => {
     if (!profiles.length || !currentUser) return;
     const p = profiles[0];
+    setLastSwiped({ profile: p, direction: "pass" });
     setProfiles(prev => prev.slice(1));
     setCardPhotoIdx(0);
     setBgIdx(i => (i+1) % BG_SCENES.length);
@@ -1863,6 +1892,102 @@ export default function AuraApp() {
   };
 
   // ── Chat ──
+  const doSuperLike = async () => {
+    if (!profiles.length || !currentUser) return;
+    const p = profiles[0];
+    setLastSwiped({ profile: p, direction: "superlike" });
+    setProfiles(prev => prev.slice(1));
+    setCardPhotoIdx(0);
+    setBgIdx(i => (i+1) % BG_SCENES.length);
+    showToast("⭐ Super Like envoyé !");
+    try {
+      await supabase.insert("swipes", {
+        swiper_id: currentUser.id,
+        swiped_id: p.id,
+        direction: "superlike"
+      });
+      // Check if they already liked us → instant match
+      const existing = await supabase.select("swipes",
+        `?swiper_id=eq.${p.id}&swiped_id=eq.${currentUser.id}&direction=eq.like`);
+      if (Array.isArray(existing) && existing.length > 0) {
+        setMatchedProfile(p);
+        setShowMatch(true);
+        await supabase.upsert("matches", {
+          user1_id: currentUser.id < p.id ? currentUser.id : p.id,
+          user2_id: currentUser.id < p.id ? p.id : currentUser.id,
+        });
+        loadMatches();
+      }
+    } catch(e) { console.error("superlike:", e); }
+  };
+
+  const doDeleteMatch = async (matchId) => {
+    if (!matchId || !currentUser) return;
+    try {
+      const token = localStorage.getItem("aura_token");
+      // Delete messages first
+      await fetch(`${SUPABASE_URL}/rest/v1/messages?match_id=eq.${matchId}`, {
+        method: "DELETE",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+      });
+      // Delete match
+      await fetch(`${SUPABASE_URL}/rest/v1/matches?id=eq.${matchId}`, {
+        method: "DELETE",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+      });
+      setDbMatches(prev => prev.filter(m => m.matchId !== matchId));
+      setOpenChat(null);
+      setRealMsgs([]);
+      showToast("Match supprimé");
+    } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+  };
+
+  const doBlockUser = async (userId, matchId) => {
+    if (!userId || !currentUser) return;
+    try {
+      const token = localStorage.getItem("aura_token");
+      // Delete the match if exists
+      if (matchId) await doDeleteMatch(matchId);
+      // Delete swipes both ways
+      await fetch(`${SUPABASE_URL}/rest/v1/swipes?swiper_id=eq.${currentUser.id}&swiped_id=eq.${userId}`, {
+        method: "DELETE",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+      });
+      // Remove from profiles list
+      setProfiles(prev => prev.filter(p => p.id !== userId));
+      setDbMatches(prev => prev.filter(m => m.id !== userId));
+      setOpenChat(null);
+      showToast("🚫 Utilisateur bloqué");
+    } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+  };
+
+  const doRewind = async () => {
+    if (!lastSwiped || !currentUser) { showToast("Rien à annuler"); return; }
+    const { profile, direction } = lastSwiped;
+    // Re-add profile at front
+    setProfiles(prev => [profile, ...prev]);
+    setLastSwiped(null);
+    setCardPhotoIdx(0);
+    // Delete the swipe from DB
+    try {
+      const token = localStorage.getItem("aura_token");
+      await fetch(`${SUPABASE_URL}/rest/v1/swipes?swiper_id=eq.${currentUser.id}&swiped_id=eq.${profile.id}`, {
+        method: "DELETE",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+      });
+      // If it was a like, also delete potential match
+      if (direction === "like") {
+        const u1 = currentUser.id < profile.id ? currentUser.id : profile.id;
+        const u2 = currentUser.id < profile.id ? profile.id : currentUser.id;
+        await fetch(`${SUPABASE_URL}/rest/v1/matches?user1_id=eq.${u1}&user2_id=eq.${u2}`, {
+          method: "DELETE",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+        });
+      }
+      showToast("↩️ Annulé !");
+    } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+  };
+
   const sendMsg = () => {
     const matchId = activeMatchIdRef.current;
     if (!chatInput.trim() || !matchId) return;
@@ -2058,7 +2183,7 @@ export default function AuraApp() {
                           <div className="pcard-age">{cur.age}</div>
                           <span style={{marginLeft:"auto",fontSize:18,opacity:0.7}}>ⓘ</span>
                         </div>
-                        <div className="pcard-job">💼 {cur.job} · {cur.city}</div>
+                        <div className="pcard-job">💼 {cur.job} · {cur.city}{cur.distance ? ` · 📍${cur.distance}km` : ""}</div>
                         <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center"}}>
                           {cur.hasVoice && <div onClick={() => setViewProfile({...cur, playVoice:true})} style={{background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>🎵 Écouter</div>}
                           {cur.hasVideo && <div onClick={() => setViewProfile({...cur, playVideo:true})} style={{background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>▶ Vidéo</div>}
@@ -2079,9 +2204,9 @@ export default function AuraApp() {
 
                 <div className="actions">
                   <div className="act-btn act-pass" onClick={doPass}>✕</div>
-                  <div className="act-btn act-undo" onClick={doUndo}>↩</div>
+                  <div className="act-btn act-undo" onClick={doRewind} style={{opacity: lastSwiped ? 1 : 0.3}}>↩</div>
                   <div className="act-btn act-like" onClick={doLike}>♥</div>
-                  <div className="act-btn act-star" onClick={() => showToast("⭐ Super Like envoyé !")}>⭐</div>
+                  <div className="act-btn act-star" onClick={doSuperLike}>⭐</div>
                   <div className="act-btn act-boost" onClick={() => showToast("🚀 Boost activé !")}>⚡</div>
                 </div>
               </div>
@@ -2145,7 +2270,16 @@ export default function AuraApp() {
                     <div className="chat-hname">{chatConv.name}</div>
                     <div className="chat-hstatus">{chatConv.online ? "● En ligne" : "Hors ligne"}</div>
                   </div>
-                  <div className="chat-hmore">⋯</div>
+                  <div className="chat-hmore" onClick={() => {
+                    if (window.confirm(`Supprimer le match avec ${chatConv.name} ?`)) {
+                      doDeleteMatch(chatConv.matchId);
+                    }
+                  }} style={{cursor:"pointer"}}>🗑️</div>
+                  <div style={{fontSize:20,color:"var(--muted)",cursor:"pointer",padding:4}} onClick={() => {
+                    if (window.confirm(`Bloquer ${chatConv.name} ?`)) {
+                      doBlockUser(chatConv.id, chatConv.matchId);
+                    }
+                  }}>🚫</div>
                 </div>
                 <div className="chat-msgs">
                   {chatLoading && <div style={{textAlign:"center",color:"rgba(255,255,255,0.4)",padding:20}}>Chargement...</div>}
@@ -2817,7 +2951,7 @@ export default function AuraApp() {
                     }}>✕</div>
                     <div style={{position:"absolute",bottom:16,left:20}}>
                       <div style={{fontSize:26,fontWeight:700,color:"#fff"}}>{viewProfile.name}, {viewProfile.age}</div>
-                      <div style={{fontSize:14,color:"rgba(255,255,255,0.7)"}}>{viewProfile.job} · {viewProfile.city}</div>
+                      <div style={{fontSize:14,color:"rgba(255,255,255,0.7)"}}>{viewProfile.job} · {viewProfile.city}{viewProfile.distance ? ` · 📍${viewProfile.distance}km` : ""}</div>
                     </div>
                   </div>
 
