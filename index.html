@@ -784,7 +784,7 @@ body{
 /* ─────────────────────────────────────────
    MESSAGES
 ───────────────────────────────────────── */
-.messages{flex:1;padding-bottom:90px;overflow-y:auto;display:flex;flex-direction:column;}
+.messages{flex:1;padding-bottom:90px;overflow-y:auto;display:flex;flex-direction:column;isolation:isolate;will-change:transform;transform:translateZ(0);}
 .messages::-webkit-scrollbar{display:none;}
 .sec-header{padding:8px 22px 0;display:flex;justify-content:space-between;align-items:center;}
 .sec-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;}
@@ -803,7 +803,7 @@ body{
 .story-inner img{width:100%;height:100%;object-fit:cover;}
 .story-name{font-size:11px;color:var(--muted);font-weight:600;}
 
-.conv-list{flex:1;padding:0 16px;}
+.conv-list{flex:1;padding:0 16px;isolation:isolate;}
 .conv{
   display:flex;gap:13px;align-items:center;
   padding:13px 8px;cursor:pointer;
@@ -2908,8 +2908,26 @@ body{
     }, chatConv.name), /*#__PURE__*/React.createElement("div", {
       className: "chat-hstatus"
     }, chatConv.online ? "● En ligne" : "Hors ligne")), /*#__PURE__*/React.createElement("div", {
-      className: "chat-hmore"
-    }, "\u22EF")), /*#__PURE__*/React.createElement("div", {
+      className: "chat-hmore",
+      onClick: () => setShowChatMenu(m => !m),
+      style: { cursor: "pointer", position: "relative" }
+    }, "\u22EF",
+    showChatMenu && /*#__PURE__*/React.createElement("div", {
+      style: { position:"absolute",top:36,right:0,background:"#1a1f35",borderRadius:14,padding:8,minWidth:190,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",border:"1px solid rgba(255,255,255,0.1)" }
+    },
+      /*#__PURE__*/React.createElement("div", {
+        onClick: e => { e.stopPropagation(); setShowChatMenu(false); setConfirmAction({ label: "Supprimer le match avec " + chatConv.name + " ?", onConfirm: () => doDeleteMatch(chatConv.matchId) }); },
+        style: { padding:"13px 16px",color:"#ff6b6b",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10 }
+      }, "\uD83D\uDDD1\uFE0F Supprimer le match"),
+      /*#__PURE__*/React.createElement("div", {
+        onClick: e => { e.stopPropagation(); setShowChatMenu(false); setConfirmAction({ label: "Bloquer " + chatConv.name + " ?", onConfirm: () => doBlockUser(chatConv.id, chatConv.matchId) }); },
+        style: { padding:"13px 16px",color:"#ff9f43",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10 }
+      }, "\uD83D\uDEAB Bloquer"),
+      /*#__PURE__*/React.createElement("div", {
+        onClick: e => { e.stopPropagation(); setShowChatMenu(false); },
+        style: { padding:"13px 16px",color:"rgba(255,255,255,0.4)",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10 }
+      }, "\u2715 Annuler")
+    ))), /*#__PURE__*/React.createElement("div", {
       className: "chat-msgs"
     }, chatLoading && /*#__PURE__*/React.createElement("div", {
       style: {
