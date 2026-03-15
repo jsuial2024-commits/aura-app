@@ -1284,6 +1284,9 @@ body{
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [profilePhotos, setProfilePhotos] = useState([]);
     const [cardPhotoIdx, setCardPhotoIdx] = useState(0);
+    const [lastSwiped, setLastSwiped] = useState(null);
+    const [showChatMenu, setShowChatMenu] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null);
     const [avatarUploading, setAvatarUploading] = useState(false);
     const [editingProfile, setEditingProfile] = useState(false);
     const [coverUrl, setCoverUrl] = useState(null);
@@ -2058,6 +2061,7 @@ body{
       if (!profiles.length || !currentUser) return;
       const p = profiles[0];
       // Retire le profil immédiatement pour fluidité
+      setLastSwiped({ profile: p, direction: "like" });
       setProfiles(prev => prev.slice(1));
       setCardPhotoIdx(0);
       setBgIdx(i => (i + 1) % BG_SCENES.length);
@@ -2108,6 +2112,7 @@ body{
     const doPass = async () => {
       if (!profiles.length || !currentUser) return;
       const p = profiles[0];
+      setLastSwiped({ profile: p, direction: "pass" });
       setProfiles(prev => prev.slice(1));
       setCardPhotoIdx(0);
       setBgIdx(i => (i + 1) % BG_SCENES.length);
@@ -2233,6 +2238,72 @@ body{
     };
 
     // ── Chat ──
+    const doRewind = async () => {
+      if (!lastSwiped || !currentUser) { showToast("Rien à annuler"); return; }
+      const { profile, direction } = lastSwiped;
+      setProfiles(prev => [profile, ...prev]);
+      setLastSwiped(null);
+      setCardPhotoIdx(0);
+      try {
+        const token = localStorage.getItem("aura_token");
+        await fetch(`${SUPABASE_URL}/rest/v1/swipes?swiper_id=eq.${currentUser.id}&swiped_id=eq.${profile.id}`, {
+          method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+        });
+        if (direction === "like") {
+          const u1 = currentUser.id < profile.id ? currentUser.id : profile.id;
+          const u2 = currentUser.id < profile.id ? profile.id : currentUser.id;
+          await fetch(`${SUPABASE_URL}/rest/v1/matches?user1_id=eq.${u1}&user2_id=eq.${u2}`, {
+            method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` }
+          });
+        }
+        showToast("↩️ Annulé !");
+      } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+    };
+
+    const doSuperLike = async () => {
+      if (!profiles.length || !currentUser) return;
+      const p = profiles[0];
+      setLastSwiped({ profile: p, direction: "superlike" });
+      setProfiles(prev => prev.slice(1));
+      setCardPhotoIdx(0);
+      setBgIdx(i => (i+1) % BG_SCENES.length);
+      showToast("⭐ Super Like envoyé !");
+      try {
+        await supabase.insert("swipes", { swiper_id: currentUser.id, swiped_id: p.id, direction: "superlike" });
+        const existing = await supabase.select("swipes", `?swiper_id=eq.${p.id}&swiped_id=eq.${currentUser.id}&direction=eq.like`);
+        if (Array.isArray(existing) && existing.length > 0) {
+          setMatchedProfile(p); setShowMatch(true);
+          await supabase.upsert("matches", { user1_id: currentUser.id < p.id ? currentUser.id : p.id, user2_id: currentUser.id < p.id ? p.id : currentUser.id });
+          loadMatches();
+        }
+      } catch(e) {}
+    };
+
+    const doDeleteMatch = async (matchId) => {
+      if (!matchId || !currentUser) return;
+      try {
+        const token = localStorage.getItem("aura_token");
+        await fetch(`${SUPABASE_URL}/rest/v1/messages?match_id=eq.${matchId}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` } });
+        await fetch(`${SUPABASE_URL}/rest/v1/matches?id=eq.${matchId}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` } });
+        setDbMatches(prev => prev.filter(m => m.matchId !== matchId));
+        setOpenChat(null); setRealMsgs([]);
+        showToast("Match supprimé");
+      } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+    };
+
+    const doBlockUser = async (userId, matchId) => {
+      if (!userId || !currentUser) return;
+      try {
+        const token = localStorage.getItem("aura_token");
+        if (matchId) await doDeleteMatch(matchId);
+        await fetch(`${SUPABASE_URL}/rest/v1/swipes?swiper_id=eq.${currentUser.id}&swiped_id=eq.${userId}`, { method: "DELETE", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` } });
+        setProfiles(prev => prev.filter(p => p.id !== userId));
+        setDbMatches(prev => prev.filter(m => m.id !== userId));
+        setOpenChat(null);
+        showToast("🚫 Utilisateur bloqué");
+      } catch(e) { showToast("❌ " + e.message.slice(0,40)); }
+    };
+
     const sendMsg = () => {
       const matchId = activeMatchIdRef.current;
       if (!chatInput.trim() || !matchId) return;
@@ -3692,7 +3763,16 @@ body{
         justifyContent: "center",
         fontSize: 14
       }
-    }, "\uD83D\uDC9B"))))), /*#__PURE__*/React.createElement("div", {
+    }, "\uD83D\uDC9B"))))), confirmAction && /*#__PURE__*/React.createElement("div", {
+      style: { position:"absolute",inset:0,zIndex:500,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end",padding:"0 0 40px" }
+    }, /*#__PURE__*/React.createElement("div", { style: { width:"100%",background:"#1a1f35",borderRadius:"24px 24px 0 0",padding:24 } },
+      /*#__PURE__*/React.createElement("div", { style: { fontSize:16,color:"#fff",fontWeight:600,textAlign:"center",marginBottom:24,lineHeight:1.4 } }, confirmAction.label),
+      /*#__PURE__*/React.createElement("div", { style: { display:"flex",gap:12 } },
+        /*#__PURE__*/React.createElement("button", { onClick: () => setConfirmAction(null), style: { flex:1,padding:14,borderRadius:14,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:"#fff",fontSize:15,cursor:"pointer",fontWeight:600 } }, "Annuler"),
+        /*#__PURE__*/React.createElement("button", { onClick: () => { confirmAction.onConfirm(); setConfirmAction(null); }, style: { flex:1,padding:14,borderRadius:14,background:"linear-gradient(135deg,#ff6b6b,#ff4444)",border:"none",color:"#fff",fontSize:15,cursor:"pointer",fontWeight:700 } }, "Confirmer")
+      )
+    )),
+    /*#__PURE__*/React.createElement("div", {
       className: "bottom-nav"
     }, [{
       id: "discover",
