@@ -1847,12 +1847,7 @@ body{
           if (prev.length === enriched.length && prev.every((m,i) => m.matchId === enriched[i]?.matchId)) return prev;
           return enriched;
         });
-        // Merge into msgs state for chat
-        setMsgs(prev => {
-          const existingIds = new Set(enriched.map(m => m.id));
-          const filtered = prev.filter(m => !existingIds.has(m.id));
-          return [...enriched, ...filtered];
-        });
+        // dbMatches is source of truth — no need to update msgs
       } catch (e) {
         console.error("loadMatches:", e);
       }
@@ -1976,7 +1971,7 @@ body{
         } catch (e) {
           console.error("polling error:", e);
         }
-      }, 15000);
+      }, 60000);
       return () => clearInterval(poll);
     }, [currentUser]);
     useEffect(() => {
