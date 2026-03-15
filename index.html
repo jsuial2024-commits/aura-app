@@ -1938,10 +1938,9 @@ body{
     // Polling messages en chat toutes les 5s
     useEffect(() => {
       activeMatchIdRef.current = openChat?.matchId || null;
-      if (!openChat?.matchId) { setChatLoading(false); return; }
-      setRealMsgs([]); // clear previous messages
-      setChatLoading(true);
-      loadMessages(openChat.matchId).then(() => setChatLoading(false)).catch(() => setChatLoading(false));
+      if (!openChat?.matchId) return;
+      // Load messages silently — don't clear existing ones to avoid flash
+      loadMessages(openChat.matchId);
       const t = setInterval(() => {
         if (activeMatchIdRef.current) loadMessages(activeMatchIdRef.current);
       }, 10000);
@@ -2926,13 +2925,7 @@ body{
       }, "\u2715 Annuler")
     ))), /*#__PURE__*/React.createElement("div", {
       className: "chat-msgs"
-    }, chatLoading && /*#__PURE__*/React.createElement("div", {
-      style: {
-        textAlign: "center",
-        color: "rgba(255,255,255,0.4)",
-        padding: 20
-      }
-    }, "Chargement..."), !chatLoading && realMsgs.length === 0 && /*#__PURE__*/React.createElement("div", {
+    },  !chatLoading && realMsgs.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         textAlign: "center",
         color: "rgba(255,255,255,0.4)",
