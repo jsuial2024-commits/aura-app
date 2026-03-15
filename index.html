@@ -1840,7 +1840,10 @@ body{
             createdAt: m.created_at
           };
         }));
-        setDbMatches(enriched);
+        setDbMatches(prev => {
+          if (prev.length === enriched.length && prev.every((m,i) => m.matchId === enriched[i]?.matchId)) return prev;
+          return enriched;
+        });
         // Merge into msgs state for chat
         setMsgs(prev => {
           const existingIds = new Set(enriched.map(m => m.id));
