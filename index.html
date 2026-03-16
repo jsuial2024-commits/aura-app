@@ -1414,12 +1414,21 @@ body{
       }
     }
     async function setupPushNotifications() {
-      if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
+      if (!("Notification" in window)) return;
       try {
         const perm = await Notification.requestPermission();
         if (perm === "granted") {
           showToast("🔔 Notifications activées !");
           localStorage.setItem("aura_notif", "1");
+          if ("serviceWorker" in navigator && "PushManager" in window) {
+            try {
+              const reg = await navigator.serviceWorker.ready;
+              const existing = await reg.pushManager.getSubscription();
+              if (!existing) {
+                await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: "BEl62iUYgUivxIkv69yViEuiBIa40HI80NM9sXZAkHJMpQGRKzGvEMR8IiRqHWQ3IaZWyWU8VPiUlXIh3d1HZFM" });
+              }
+            } catch(e) { console.log("Push:", e.message); }
+          }
         }
       } catch (e) {}
     }
@@ -2378,7 +2387,12 @@ body{
       sendRealMsg(matchId, txt);
     };
     const chatConv = openChat || null;
-    const shownProfiles = onlineOnly ? profiles.filter(p => p.online) : profiles;
+    const shownProfiles = profiles.filter(p => {
+      if (onlineOnly && !p.online) return false;
+      if (p.age && parseInt(p.age) > parseInt(ageF)) return false;
+      if (p.distance && parseInt(distF) < 500 && p.distance > parseInt(distF)) return false;
+      return true;
+    });
     const cur = shownProfiles[0],
       nxt = shownProfiles[1],
       nn = shownProfiles[2];
@@ -3162,13 +3176,8 @@ body{
       key: i,
       onClick: () => (() => {
               const plan = p.label;
-              const url = plan === "1 mois" 
-                ? "https://buy.stripe.com/test_aura_1mois"
-                : plan === "6 mois"
-                ? "https://buy.stripe.com/test_aura_6mois"
-                : "https://buy.stripe.com/test_aura_12mois";
-              showToast("💳 Redirection vers le paiement...");
-              setTimeout(() => window.open(url, "_blank"), 1000);
+              const price = plan === "1 mois" ? "1,99€" : plan === "6 mois" ? "1,49€/mois" : "0,99€/mois";
+              showToast("💳 Paiement " + price + " - Bientôt disponible !");
             })(),
       style: {
         background: plan.popular ? "linear-gradient(135deg,#E8647A,#E8A050)" : "rgba(255,255,255,0.05)",
@@ -4127,8 +4136,8 @@ body{
     }, "18 \u2014 ", ageF, " ans"), /*#__PURE__*/React.createElement("input", {
       className: "fslider",
       type: "range",
-      min: 20,
-      max: 55,
+      min: 18,
+      max: 60,
       value: ageF,
       onChange: e => setAgeF(e.target.value)
     })), /*#__PURE__*/React.createElement("div", {
@@ -4141,7 +4150,7 @@ body{
       className: "fslider",
       type: "range",
       min: 5,
-      max: 100,
+      max: 200,
       value: distF,
       onChange: e => setDistF(e.target.value)
     })), /*#__PURE__*/React.createElement("div", {
