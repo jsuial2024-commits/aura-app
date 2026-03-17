@@ -16,6 +16,8 @@
     #root { width:100%; height:100%; }
     .status-bar, .splash-status { display:none !important; }
   </style>
+  <!-- Google AdSense — remplace ca-pub-XXXXXXXXXXXXXXXX par ton vrai ID -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -208,7 +210,14 @@
         }
       },
       async signOut() {
-        const token = localStorage.getItem("aura_token");
+        // Check if returning from Stripe payment
+    if (window.location.search.includes('payment=success')) {
+      localStorage.setItem('aura_premium', '1');
+      setIsPremium(true);
+      showToast('👑 Bienvenue dans Aura Premium !');
+      window.history.replaceState({}, '', '/');
+    }
+    const token = localStorage.getItem("aura_token");
         await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
           method: "POST",
           headers: {
@@ -842,6 +851,7 @@ body{
 /* ─────────────────────────────────────────
    CHAT
 ───────────────────────────────────────── */
+.ad-banner{margin:8px 18px;border-radius:16px;overflow:hidden;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);min-height:60px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:11px;text-align:center;padding:8px;}
 .chat{position:absolute;top:0;left:0;right:0;bottom:90px;display:flex;flex-direction:column;overflow:hidden;background:#0a0e1a;z-index:10;isolation:isolate;}
 .chat-header{
   padding:8px 18px 12px;
@@ -1287,6 +1297,7 @@ body{
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState("");
     const [currentUser, setCurrentUser] = useState(null);
+    const [isPremium, setIsPremium] = useState(() => localStorage.getItem('aura_premium') === '1');
     const [userLocation, setUserLocation] = useState(null);
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [profilePhotos, setProfilePhotos] = useState([]);
@@ -2879,7 +2890,18 @@ body{
     }, "Reviens demain pour d\xE9couvrir de nouveaux profils pr\xE8s de toi."), /*#__PURE__*/React.createElement("div", {
       className: "empty-link",
       onClick: doUndo
-    }, "\uD83D\uDD04 Recommencer la d\xE9mo"))), /*#__PURE__*/React.createElement("div", {
+    }, "\uD83D\uDD04 Recommencer la d\xE9mo"))), !isPremium && /*#__PURE__*/React.createElement("div", { className: "ad-banner" },
+      /*#__PURE__*/React.createElement("ins", {
+        className: "adsbygoogle",
+        style: { display:"block", width:"100%", height:"60px" },
+        "data-ad-client": "ca-pub-XXXXXXXXXXXXXXXX",
+        "data-ad-slot": "XXXXXXXXXX",
+        "data-ad-format": "horizontal",
+        "data-full-width-responsive": "true"
+      }),
+      /*#__PURE__*/React.createElement("script", null, "(adsbygoogle = window.adsbygoogle || []).push({});")
+    ),
+    /*#__PURE__*/React.createElement("div", {
       className: "actions"
     }, /*#__PURE__*/React.createElement("div", {
       className: "act-btn act-pass",
@@ -2943,7 +2965,17 @@ body{
       }
     }, p.name[0]))), /*#__PURE__*/React.createElement("span", {
       className: "story-name"
-    }, p.name)))), /*#__PURE__*/React.createElement("div", {
+    }, p.name)))), !isPremium && /*#__PURE__*/React.createElement("div", { className: "ad-banner" },
+      /*#__PURE__*/React.createElement("ins", {
+        className: "adsbygoogle",
+        style: { display:"block", width:"100%", height:"60px" },
+        "data-ad-client": "ca-pub-XXXXXXXXXXXXXXXX",
+        "data-ad-slot": "XXXXXXXXXX",
+        "data-ad-format": "horizontal"
+      }),
+      /*#__PURE__*/React.createElement("script", null, "(adsbygoogle = window.adsbygoogle || []).push({});")
+    ),
+    /*#__PURE__*/React.createElement("div", {
       className: "conv-list"
     }, dbMatches.map(c => /*#__PURE__*/React.createElement("div", {
       key: c.id,
@@ -3186,12 +3218,13 @@ body{
       key: i,
       onClick: () => (() => {
               const plan = p.label;
-              const url = plan === "1 mois"
-                ? "https://buy.stripe.com/fZucN6d6BgXMaH29t8bfO00"
-                : plan === "6 mois"
-                ? "https://buy.stripe.com/28EeVe4A5bDs6qMcFkbfO01"
-                : "https://buy.stripe.com/3cI6oI9Up9vk7uQ8p4bfO02";
-              window.open(url, "_blank");
+              const urls = {
+                "1 mois": "https://buy.stripe.com/fZucN6d6BgXMaH29t8bfO00",
+                "6 mois": "https://buy.stripe.com/28EeVe4A5bDs6qMcFkbfO01",
+                "12 mois": "https://buy.stripe.com/3cI6oI9Up9vk7uQ8p4bfO02"
+              };
+              window.open(urls[plan], "_blank");
+              showToast("💳 Après paiement, revenez sur l'app !");
             })(),
       style: {
         background: plan.popular ? "linear-gradient(135deg,#E8647A,#E8A050)" : "rgba(255,255,255,0.05)",
