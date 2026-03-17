@@ -1329,6 +1329,7 @@ body{
     const [showLikesPanel, setShowLikesPanel] = useState(false);
     const [profileViews, setProfileViews] = useState([]);
     const [showViewsPanel, setShowViewsPanel] = useState(false);
+    const [showLegal, setShowLegal] = useState(null); // 'cgu' or 'privacy'
     const [chatInput, setChatInput] = useState("");
     const [toast, setToast] = useState(null);
     const [genderF, setGenderF] = useState("Femmes");
@@ -2550,7 +2551,16 @@ body{
         outline: "none",
         boxSizing: "border-box"
       }
-    })), authError && /*#__PURE__*/React.createElement("div", {
+    })), authMode === "register" && /*#__PURE__*/React.createElement("div", {
+      style: { fontSize:11, color:"rgba(255,255,255,0.35)", textAlign:"center", marginBottom:8, lineHeight:1.5 }
+    }, "En créant un compte, vous acceptez nos ", /*#__PURE__*/React.createElement("span", {
+      onClick: () => setShowLegal('cgu'),
+      style: { color:"#E8647A", textDecoration:"underline", cursor:"pointer" }
+    }, "CGU"), " et notre ", /*#__PURE__*/React.createElement("span", {
+      onClick: () => setShowLegal('privacy'),
+      style: { color:"#E8647A", textDecoration:"underline", cursor:"pointer" }
+    }, "Politique de confidentialité")),
+    authError && /*#__PURE__*/React.createElement("div", {
       style: {
         color: "#ff6b6b",
         fontSize: 13,
@@ -3707,7 +3717,19 @@ body{
         cursor: "pointer",
         letterSpacing: "0.5px"
       }
-    }, "\uD83D\uDEAA Se d\xE9connecter"), /*#__PURE__*/React.createElement("button", {
+    }, "\uD83D\uDEAA Se d\xE9connecter"), /*#__PURE__*/React.createElement("div", {
+      style: { display:"flex", gap:8, marginTop:8 }
+    },
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setShowLegal('cgu'),
+        style: { flex:1, padding:"10px", borderRadius:14, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer" }
+      }, "\uD83D\uDCCB CGU"),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setShowLegal('privacy'),
+        style: { flex:1, padding:"10px", borderRadius:14, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.5)", fontSize:12, cursor:"pointer" }
+      }, "\uD83D\uDD12 Confidentialité")
+    ),
+    /*#__PURE__*/React.createElement("button", {
       onClick: seedFakeProfiles,
       style: {
         width: "100%",
@@ -3877,6 +3899,53 @@ body{
         /*#__PURE__*/React.createElement("button", { onClick: () => { confirmAction.onConfirm(); setConfirmAction(null); }, style: { flex:1,padding:14,borderRadius:14,background:"linear-gradient(135deg,#ff6b6b,#ff4444)",border:"none",color:"#fff",fontSize:15,cursor:"pointer",fontWeight:700 } }, "Confirmer")
       )
     )),
+    showLegal && /*#__PURE__*/React.createElement("div", {
+      style: { position:"absolute",inset:0,zIndex:50,background:"#0a0e1a",display:"flex",flexDirection:"column",overflow:"hidden" }
+    },
+      /*#__PURE__*/React.createElement("div", {
+        style: { padding:"16px 20px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(255,255,255,0.08)",flexShrink:0 }
+      },
+        /*#__PURE__*/React.createElement("div", { onClick: () => setShowLegal(null), style: { fontSize:22,cursor:"pointer",color:"#E8647A",padding:4 } }, "\u2190"),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize:18,fontWeight:700,color:"#fff" } }, showLegal === 'cgu' ? "Conditions Générales d'Utilisation" : "Politique de Confidentialité")
+      ),
+      /*#__PURE__*/React.createElement("div", {
+        style: { flex:1,overflowY:"auto",padding:"20px 24px",color:"rgba(255,255,255,0.75)",fontSize:13,lineHeight:1.7 }
+      },
+        showLegal === 'cgu' ? /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#fff",marginBottom:8} }, "Conditions Générales d'Utilisation — Aura"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:6,color:"rgba(255,255,255,0.4)",fontSize:12} }, "Dernière mise à jour : mars 2026"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "En utilisant l'application Aura, vous acceptez les présentes conditions d'utilisation. Veuillez les lire attentivement."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "1. Objet"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Aura est une application de rencontres permettant à des adultes de se connecter. L'application est réservée aux personnes majeures (18 ans et plus)."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "2. Inscription"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Vous vous engagez à fournir des informations exactes lors de votre inscription. Chaque utilisateur ne peut avoir qu'un seul compte. Vous êtes responsable de la confidentialité de votre mot de passe."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "3. Comportement"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Il est interdit de publier du contenu offensant, illégal ou trompeur. Le harcèlement, la discrimination et les comportements abusifs sont strictement interdits. Tout manquement entraîne la suppression immédiate du compte."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "4. Premium"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "L'abonnement Premium est sans engagement et résiliable à tout moment. Le prélèvement est mensuel. Aucun remboursement n'est effectué pour les périodes entamées."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "5. Responsabilité"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Aura n'est pas responsable des interactions entre utilisateurs. L'application est fournie 'en l'état' sans garantie de disponibilité continue. Nous nous réservons le droit de modifier ou interrompre le service à tout moment."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "6. Droit applicable"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Les présentes CGU sont soumises au droit français. Tout litige sera soumis aux tribunaux compétents de France.")
+        ) : /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#fff",marginBottom:8} }, "Politique de Confidentialité — Aura"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:6,color:"rgba(255,255,255,0.4)",fontSize:12} }, "Dernière mise à jour : mars 2026"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Votre vie privée est importante pour nous. Cette politique explique quelles données nous collectons et comment nous les utilisons."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "1. Données collectées"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Nous collectons : votre adresse email, votre prénom, votre photo de profil, votre localisation approximative (si autorisée), et vos interactions dans l'app (likes, messages)."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "2. Utilisation des données"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Vos données sont utilisées uniquement pour faire fonctionner l'application : afficher votre profil, vous mettre en relation avec d'autres utilisateurs, et améliorer l'expérience."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "3. Partage des données"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Nous ne vendons jamais vos données. Elles sont hébergées sur Supabase (infrastructure sécurisée). Seuls les autres utilisateurs peuvent voir votre profil public."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "4. Vos droits (RGPD)"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Conformément au RGPD, vous avez le droit d'accéder, modifier ou supprimer vos données à tout moment. Pour exercer ces droits, supprimez votre compte depuis l'application."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "5. Cookies"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "L'application utilise le stockage local (localStorage) uniquement pour maintenir votre session. Aucun cookie de tracking tiers n'est utilisé."),
+          /*#__PURE__*/React.createElement("p", { style:{fontWeight:700,color:"#E8647A",marginBottom:6} }, "6. Contact"),
+          /*#__PURE__*/React.createElement("p", { style:{marginBottom:16} }, "Pour toute question concernant vos données personnelles, contactez-nous via l'application.")
+        )
+      )
+    ),
     showViewsPanel && /*#__PURE__*/React.createElement("div", {
       style: { position:"absolute",inset:0,zIndex:40,background:"#0a0e1a",display:"flex",flexDirection:"column",overflow:"hidden" }
     },
