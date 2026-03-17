@@ -3176,8 +3176,12 @@ body{
       key: i,
       onClick: () => (() => {
               const plan = p.label;
-              const price = plan === "1 mois" ? "1,99€" : plan === "6 mois" ? "1,49€/mois" : "0,99€/mois";
-              showToast("💳 Paiement " + price + " - Bientôt disponible !");
+              const url = plan === "1 mois"
+                ? "https://buy.stripe.com/fZucN6d6BgXMaH29t8bfO00"
+                : plan === "6 mois"
+                ? "https://buy.stripe.com/28EeVe4A5bDs6qMcFkbfO01"
+                : "https://buy.stripe.com/3cI6oI9Up9vk7uQ8p4bfO02";
+              window.open(url, "_blank");
             })(),
       style: {
         background: plan.popular ? "linear-gradient(135deg,#E8647A,#E8A050)" : "rgba(255,255,255,0.05)",
