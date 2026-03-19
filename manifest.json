@@ -2,7 +2,7 @@
   "name": "Aura - Trouve ta personne",
   "short_name": "Aura",
   "description": "L'app de rencontres qui trouve ton spark",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0a",
@@ -20,5 +20,12 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "prefer_related_applications": false,
+  "categories": [
+    "social",
+    "lifestyle"
+  ],
+  "lang": "fr",
+  "scope": "/"
 }

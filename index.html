@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <link rel="dns-prefetch" href="https://izbclyrionmfcjdidnuo.supabase.co"/>
+  <link rel="dns-prefetch" href="https://unpkg.com"/>
+  <link rel="dns-prefetch" href="https://images.unsplash.com"/>
+  <link rel="preconnect" href="https://izbclyrionmfcjdidnuo.supabase.co"/>
   <title>Aura</title>
   <link rel="manifest" href="/manifest.json"/>
   <meta name="theme-color" content="#E8647A"/>
@@ -11,12 +16,14 @@
   <meta name="apple-mobile-web-app-title" content="Aura"/>
   <link rel="apple-touch-icon" href="/icon-192.png"/>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; } img { content-visibility: auto; }
     html, body { width:100%; height:100vh; height:100dvh; background:#0a0a0a; overflow:hidden; }
     #root { width:100%; height:100%; }
     .status-bar, .splash-status { display:none !important; }
   </style>
   <!-- Google AdSense — remplace ca-pub-XXXXXXXXXXXXXXXX par ton vrai ID -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -26,7 +33,7 @@
   <script>
     var useState=React.useState; var useRef=React.useRef;
     var useEffect=React.useEffect; var useCallback=React.useCallback;
-    if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));
+    if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }));
   </script>
   <script>(function () {
   var useState = React.useState;
@@ -39,18 +46,18 @@
 
   // ─── FAKE PROFILES (seed) ───────────────────────────────────────────────────
   const FAKE_PROFILES = [
-  { id:"11111111-1111-1111-1111-111111111111", name:"Camille", age:26, city:"Paris", job:"Designer UX", bio:"Passionnée de street art, de café et de voyages spontanés ✈️ Je dessine le monde comme je voudrais qu'il soit 🎨 Fan de Wes Anderson et des dimanches au marché.", photo_url:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85","https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=800&q=85","https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=800&q=85"], interests:["Art","Voyage","Café","Cinéma"], latitude:48.85, longitude:2.35 },
-  { id:"22222222-2222-2222-2222-222222222222", name:"Léa", age:24, city:"Lyon", job:"Photographe", bio:"Je capture les instants qui comptent 📸 Randonneuse le weekend, foodie toute la semaine 🌿 À la recherche de quelqu'un pour partager de belles aventures.", photo_url:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=85","https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85"], interests:["Photo","Randonnée","Gastronomie","Nature"], latitude:45.75, longitude:4.85 },
-  { id:"33333333-3333-3333-3333-333333333333", name:"Sofia", age:28, city:"Paris", job:"Avocate", bio:"Debout à 6h, yoga, café, tribunal ⚖️ Je plaide autant pour mes clients que pour un bon restaurant 😄 Cherche quelqu'un qui ne s'endort pas avant 23h.", photo_url:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=85","https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=85","https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&q=85"], interests:["Yoga","Droit","Restaurants","Lecture"], latitude:48.87, longitude:2.33 },
-  { id:"44444444-4444-4444-4444-444444444444", name:"Inès", age:23, city:"Bordeaux", job:"Étudiante en médecine", bio:"Entre les livres et les soirées 🍷 Je sais faire les deux avec élégance. Passionnée par la neuroscience et les bons vins de Bordeaux 🧠", photo_url:"https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=85","https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85"], interests:["Médecine","Vin","Danse","Sciences"], latitude:44.83, longitude:-0.57 },
-  { id:"55555555-5555-5555-5555-555555555555", name:"Jade", age:27, city:"Marseille", job:"Chef cuisinière", bio:"La mer et la cuisine c'est toute ma vie 🌊🍽️ Je cuisine provençal le matin, je surfe l'après-midi. Si tu aimes manger on va bien s'entendre 😋", photo_url:"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85","https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=85"], interests:["Cuisine","Surf","Mer","Gastronomie"], latitude:43.30, longitude:5.37 },
-  { id:"66666666-6666-6666-6666-666666666666", name:"Manon", age:25, city:"Toulouse", job:"Ingénieure aéronautique", bio:"Je travaille sur des avions le jour, je rêve sous les étoiles la nuit 🛩️✨ Passionnée d'escalade et de SF. Cherche quelqu'un d'aussi curieux que moi.", photo_url:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=85","https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=85"], interests:["Escalade","Sciences","SF","Astronomie"], latitude:43.60, longitude:1.44 },
-  { id:"77777777-7777-7777-7777-777777777777", name:"Chloé", age:29, city:"Nice", job:"Journaliste", bio:"Curieuse de tout, voyageuse compulsive ✈️ J'ai vécu à Tokyo, Buenos Aires et Nairobi. De retour à Nice pour souffler... un peu 😄", photo_url:"https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=800&q=85","https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=85","https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85"], interests:["Voyage","Écriture","Langues","Plongée"], latitude:43.71, longitude:7.26 },
-  { id:"88888888-8888-8888-8888-888888888888", name:"Emma", age:22, city:"Nantes", job:"Illustratrice", bio:"Je dessine le monde tel que je voudrais qu'il soit 🖍️ Fan de Studio Ghibli, de plantes et de chats. Mon chat s'appelle Totoro 🐱", photo_url:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=85","https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85"], interests:["Illustration","Anime","Plantes","Chats"], latitude:47.21, longitude:-1.55 },
-  { id:"99999999-9999-9999-9999-999999999999", name:"Alice", age:31, city:"Strasbourg", job:"Architecte", bio:"Je construis des bâtiments le jour et des châteaux en Espagne la nuit 🏛️ Amoureuse du patrimoine alsacien, du vin blanc et du design brutaliste.", photo_url:"https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&q=85","https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=85"], interests:["Architecture","Vin","Design","Histoire"], latitude:48.57, longitude:7.75 },
-  { id:"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name:"Lucie", age:24, city:"Montpellier", job:"Vétérinaire", bio:"Je soigne les animaux et ça me prend tout le cœur ❤️ Cavalière depuis l'enfance, runner le matin, Netflix le soir. Mon golden retriever cherche aussi l'amour 🐕", photo_url:"https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=800&q=85","https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=85"], interests:["Animaux","Équitation","Running","Nature"], latitude:43.61, longitude:3.87 },
-  { id:"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", name:"Sarah", age:26, city:"Lille", job:"Data Scientist", bio:"Je parle couramment Python et sarcasme 🐍 Passionnée d'IA mais convaincue que les humains restent irremplaçables. Cherche la preuve en toi 😉", photo_url:"https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=800&q=85","https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=800&q=85"], interests:["Tech","IA","Échecs","Jeux vidéo"], latitude:50.63, longitude:3.06 },
-  { id:"cccccccc-cccc-cccc-cccc-cccccccccccc", name:"Marie", age:30, city:"Rennes", job:"Musicienne", bio:"Violoniste classique qui écoute du jazz dans sa voiture 🎻 Je compose la nuit, j'enseigne le jour. Cherche quelqu'un qui danse même sans musique.", photo_url:"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85", photos_urls:["https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=85","https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&q=85","https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=85"], interests:["Musique","Jazz","Danse","Concerts"], latitude:48.11, longitude:-1.68 }
+  { id:"11111111-1111-1111-1111-111111111111", name:"Camille", age:26, city:"Paris", job:"Designer UX", bio:"Passionnée de street art, de café et de voyages spontanés ✈️ Je dessine le monde comme je voudrais qu'il soit 🎨 Fan de Wes Anderson et des dimanches au marché.", photo_url:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=400&q=70&auto=format&fit=crop"], interests:["Art","Voyage","Café","Cinéma"], latitude:48.85, longitude:2.35 },
+  { id:"22222222-2222-2222-2222-222222222222", name:"Léa", age:24, city:"Lyon", job:"Photographe", bio:"Je capture les instants qui comptent 📸 Randonneuse le weekend, foodie toute la semaine 🌿 À la recherche de quelqu'un pour partager de belles aventures.", photo_url:"https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=70&auto=format&fit=crop"], interests:["Photo","Randonnée","Gastronomie","Nature"], latitude:45.75, longitude:4.85 },
+  { id:"33333333-3333-3333-3333-333333333333", name:"Sofia", age:28, city:"Paris", job:"Avocate", bio:"Debout à 6h, yoga, café, tribunal ⚖️ Je plaide autant pour mes clients que pour un bon restaurant 😄 Cherche quelqu'un qui ne s'endort pas avant 23h.", photo_url:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&q=70&auto=format&fit=crop"], interests:["Yoga","Droit","Restaurants","Lecture"], latitude:48.87, longitude:2.33 },
+  { id:"44444444-4444-4444-4444-444444444444", name:"Inès", age:23, city:"Bordeaux", job:"Étudiante en médecine", bio:"Entre les livres et les soirées 🍷 Je sais faire les deux avec élégance. Passionnée par la neuroscience et les bons vins de Bordeaux 🧠", photo_url:"https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&q=70&auto=format&fit=crop"], interests:["Médecine","Vin","Danse","Sciences"], latitude:44.83, longitude:-0.57 },
+  { id:"55555555-5555-5555-5555-555555555555", name:"Jade", age:27, city:"Marseille", job:"Chef cuisinière", bio:"La mer et la cuisine c'est toute ma vie 🌊🍽️ Je cuisine provençal le matin, je surfe l'après-midi. Si tu aimes manger on va bien s'entendre 😋", photo_url:"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=70&auto=format&fit=crop"], interests:["Cuisine","Surf","Mer","Gastronomie"], latitude:43.30, longitude:5.37 },
+  { id:"66666666-6666-6666-6666-666666666666", name:"Manon", age:25, city:"Toulouse", job:"Ingénieure aéronautique", bio:"Je travaille sur des avions le jour, je rêve sous les étoiles la nuit 🛩️✨ Passionnée d'escalade et de SF. Cherche quelqu'un d'aussi curieux que moi.", photo_url:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&q=70&auto=format&fit=crop"], interests:["Escalade","Sciences","SF","Astronomie"], latitude:43.60, longitude:1.44 },
+  { id:"77777777-7777-7777-7777-777777777777", name:"Chloé", age:29, city:"Nice", job:"Journaliste", bio:"Curieuse de tout, voyageuse compulsive ✈️ J'ai vécu à Tokyo, Buenos Aires et Nairobi. De retour à Nice pour souffler... un peu 😄", photo_url:"https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&q=70&auto=format&fit=crop"], interests:["Voyage","Écriture","Langues","Plongée"], latitude:43.71, longitude:7.26 },
+  { id:"88888888-8888-8888-8888-888888888888", name:"Emma", age:22, city:"Nantes", job:"Illustratrice", bio:"Je dessine le monde tel que je voudrais qu'il soit 🖍️ Fan de Studio Ghibli, de plantes et de chats. Mon chat s'appelle Totoro 🐱", photo_url:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=70&auto=format&fit=crop"], interests:["Illustration","Anime","Plantes","Chats"], latitude:47.21, longitude:-1.55 },
+  { id:"99999999-9999-9999-9999-999999999999", name:"Alice", age:31, city:"Strasbourg", job:"Architecte", bio:"Je construis des bâtiments le jour et des châteaux en Espagne la nuit 🏛️ Amoureuse du patrimoine alsacien, du vin blanc et du design brutaliste.", photo_url:"https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=70&auto=format&fit=crop"], interests:["Architecture","Vin","Design","Histoire"], latitude:48.57, longitude:7.75 },
+  { id:"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name:"Lucie", age:24, city:"Montpellier", job:"Vétérinaire", bio:"Je soigne les animaux et ça me prend tout le cœur ❤️ Cavalière depuis l'enfance, runner le matin, Netflix le soir. Mon golden retriever cherche aussi l'amour 🐕", photo_url:"https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70&auto=format&fit=crop"], interests:["Animaux","Équitation","Running","Nature"], latitude:43.61, longitude:3.87 },
+  { id:"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", name:"Sarah", age:26, city:"Lille", job:"Data Scientist", bio:"Je parle couramment Python et sarcasme 🐍 Passionnée d'IA mais convaincue que les humains restent irremplaçables. Cherche la preuve en toi 😉", photo_url:"https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=400&q=70&auto=format&fit=crop"], interests:["Tech","IA","Échecs","Jeux vidéo"], latitude:50.63, longitude:3.06 },
+  { id:"cccccccc-cccc-cccc-cccc-cccccccccccc", name:"Marie", age:30, city:"Rennes", job:"Musicienne", bio:"Violoniste classique qui écoute du jazz dans sa voiture 🎻 Je compose la nuit, j'enseigne le jour. Cherche quelqu'un qui danse même sans musique.", photo_url:"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=70&auto=format&fit=crop", photos_urls:["https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&q=70&auto=format&fit=crop","https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&q=70&auto=format&fit=crop"], interests:["Musique","Jazz","Danse","Concerts"], latitude:48.11, longitude:-1.68 }
 ];
   function getDistance(lat1,lon1,lat2,lon2){
     if(!lat1||!lon1||!lat2||!lon2) return null;
@@ -91,7 +98,7 @@
             })
           });
           const data = await r.json();
-          console.log("signUp response:", JSON.stringify(data));
+          );
           return data;
         } catch (e) {
           console.error("signUp error:", e);
@@ -119,7 +126,7 @@
             })
           });
           const data = await r.json();
-          console.log("signIn response:", JSON.stringify(data));
+          );
           if (data.access_token) {
             localStorage.setItem("aura_token", data.access_token);
             localStorage.setItem("aura_user_id", data.user?.id);
@@ -521,7 +528,7 @@ body{
   padding:0 18px;
   display:flex;align-items:center;justify-content:center;
 }
-.pcard{
+.pcard{contain:layout style paint;
   position:absolute;width:100%;height:455px;
   border-radius:32px;overflow:hidden;
   cursor:grab;user-select:none;
@@ -744,7 +751,7 @@ body{
 .story-name{font-size:11px;color:var(--muted);font-weight:600;}
 
 .conv-list{flex:1;padding:0 16px;isolation:isolate;}
-.conv{
+.conv{contain:layout;
   display:flex;gap:13px;align-items:center;
   padding:13px 8px;cursor:pointer;
   border-bottom:1px solid var(--border);
@@ -1094,7 +1101,7 @@ body{
     match: 94,
     hasVoice: true,
     hasVideo: true,
-    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80"
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=70&auto=format&fit=crop"
   }, {
     id: 2,
     name: "Sofia",
@@ -1109,7 +1116,7 @@ body{
     match: 88,
     hasVoice: true,
     hasVideo: false,
-    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80"
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=70&auto=format&fit=crop"
   }, {
     id: 3,
     name: "Camille",
@@ -1124,7 +1131,7 @@ body{
     match: 79,
     hasVoice: false,
     hasVideo: true,
-    photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&q=80"
+    photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&q=70&auto=format&fit=crop"
   }, {
     id: 4,
     name: "Emma",
@@ -1139,14 +1146,14 @@ body{
     match: 91,
     hasVoice: true,
     hasVideo: true,
-    photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80"
+    photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70&auto=format&fit=crop"
   }];
 
   // ─── CONVERSATIONS ───────────────────────────────────────────────────
   const MESSAGES_DATA = [{
     id: 1,
     name: "Léa",
-    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&q=80",
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=70&auto=format&fit=crop",
     online: true,
     lastMsg: "Haha oui exactement ! Tu connais cet endroit ?",
     time: "2 min",
@@ -1175,7 +1182,7 @@ body{
   }, {
     id: 2,
     name: "Emma",
-    photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&q=80",
+    photo: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=70&auto=format&fit=crop",
     online: true,
     lastMsg: "Super ! On se retrouve samedi alors ?",
     time: "1h",
@@ -1200,7 +1207,7 @@ body{
   }, {
     id: 3,
     name: "Sofia",
-    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&q=80",
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=70&auto=format&fit=crop",
     online: false,
     lastMsg: "Je t'enverrai la recette 😄",
     time: "3h",
@@ -1367,7 +1374,7 @@ body{
               if (!existing) {
                 await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: "BEl62iUYgUivxIkv69yViEuiBIa40HI80NM9sXZAkHJMpQGRKzGvEMR8IiRqHWQ3IaZWyWU8VPiUlXIh3d1HZFM" });
               }
-            } catch(e) { console.log("Push:", e.message); }
+            } catch(e) { }
           }
         }
       } catch (e) {}
@@ -1523,7 +1530,6 @@ body{
           body: file
         });
         const respText = await r.text();
-        console.log("Storage response:", r.status, respText);
         if (r.ok || r.status === 200) {
           const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
           setAvatarUrl(url);
@@ -1544,7 +1550,6 @@ body{
               })
             });
             const dbTxt = await dbR.text();
-            console.log("PATCH photo result:", dbR.status, dbTxt);
             if (dbR.ok) {
               showToast("✅ Photo sauvegardée !");
             } else {
@@ -1620,7 +1625,7 @@ body{
     async function loadMyProfile(userId) {
       try {
         const data = await supabase.select("profiles", `?id=eq.${userId}`);
-        console.log("loadMyProfile data:", JSON.stringify(data));
+        );
         if (Array.isArray(data) && data[0]) {
           const p = data[0];
           if (p.name) setProfileName(p.name);
@@ -1630,13 +1635,12 @@ body{
           if (p.job) setProfileJob(p.job);
           if (p.photo_url) {
             setAvatarUrl(p.photo_url);
-            console.log("Avatar loaded:", p.photo_url.slice(0, 60));
+            );
           }
           if (p.photos_urls && Array.isArray(p.photos_urls)) setProfilePhotos(p.photos_urls);else if (p.photo_url) setProfilePhotos([p.photo_url]);
           if (p.cover_url) setCoverUrl(p.cover_url);
         } else {
-          console.log("loadMyProfile: no profile found for", userId);
-        }
+          }
       } catch (e) {
         console.error("loadMyProfile error:", e);
       }
@@ -1701,8 +1705,7 @@ body{
           setProfiles([]);
         }
       } catch (e) {
-        console.log(e);
-      }
+        }
     }
     async function loadMessages(matchId) {
       if (!matchId) return;
@@ -1742,7 +1745,6 @@ body{
           body: JSON.stringify(msg)
         });
         const respTxt = await r.text();
-        console.log("sendMsg response:", r.status, respTxt);
         if (r.ok) {
           const saved = respTxt ? JSON.parse(respTxt) : null;
           const newMsg = Array.isArray(saved) ? saved[0] : saved;
@@ -3296,7 +3298,7 @@ body{
       }
     }, /*#__PURE__*/React.createElement("img", {
       className: "profile-av",
-      src: avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
+      src: avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=70&auto=format&fit=crop",
       alt: "me",
       style: {
         width: 88,
