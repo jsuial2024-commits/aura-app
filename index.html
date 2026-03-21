@@ -435,69 +435,128 @@ body{
 .splash{
   position:absolute;inset:0;
   display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  padding:0 32px;text-align:center;
-  gap:0;
+  overflow:hidden;
 }
-.splash-status{
-  position:absolute;top:0;left:0;right:0;
-  padding:16px 28px 0;
-  display:flex;justify-content:space-between;align-items:center;
+.splash-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(160deg,#0d0118 0%,#1a0528 30%,#2d0a1e 60%,#0d0118 100%);
+}
+.splash-bg::before{
+  content:'';position:absolute;
+  width:400px;height:400px;
+  background:radial-gradient(circle,rgba(232,100,122,0.35) 0%,transparent 70%);
+  top:-80px;right:-80px;
+  animation:floatOrb 8s ease-in-out infinite;
+}
+.splash-bg::after{
+  content:'';position:absolute;
+  width:300px;height:300px;
+  background:radial-gradient(circle,rgba(192,132,252,0.25) 0%,transparent 70%);
+  bottom:100px;left:-60px;
+  animation:floatOrb 10s ease-in-out infinite reverse;
+}
+@keyframes floatOrb{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-30px) scale(1.1);}
+}
+.splash-top{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:60px 32px 0;
+  position:relative;z-index:2;
 }
 .splash-logo{
   font-family:'Cormorant Garamond',serif;
-  font-size:96px;font-weight:700;line-height:1;
-  background:linear-gradient(135deg,#F5C883 0%,#E8647A 55%,#C084FC 100%);
+  font-size:88px;font-weight:700;line-height:1;
+  background:linear-gradient(135deg,#ffd6e0 0%,#E8647A 40%,#C084FC 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  margin-bottom:4px;
-  animation:fadeUpEl .9s cubic-bezier(.22,1,.36,1) both;
+  letter-spacing:-2px;
+  animation:fadeUpEl .8s cubic-bezier(.22,1,.36,1) both;
 }
 .splash-tag{
-  font-size:12px;letter-spacing:5px;text-transform:uppercase;
-  color:var(--muted);font-weight:400;margin-bottom:36px;
-  animation:fadeUpEl .9s .08s cubic-bezier(.22,1,.36,1) both;
+  font-size:13px;letter-spacing:6px;text-transform:uppercase;
+  color:rgba(255,255,255,0.35);font-weight:400;margin-top:6px;
+  animation:fadeUpEl .8s .1s cubic-bezier(.22,1,.36,1) both;
 }
-.splash-pills{
-  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
-  margin-bottom:36px;
-  animation:fadeUpEl .9s .16s cubic-bezier(.22,1,.36,1) both;
+.splash-tagline{
+  font-size:22px;font-weight:300;color:rgba(255,255,255,0.85);
+  text-align:center;line-height:1.4;margin-top:32px;
+  font-family:'Cormorant Garamond',serif;
+  animation:fadeUpEl .8s .2s cubic-bezier(.22,1,.36,1) both;
 }
-.splash-pill{
-  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.16);
-  backdrop-filter:blur(14px);
-  border-radius:40px;padding:8px 15px;
-  font-size:12px;font-weight:700;color:rgba(255,255,255,0.88);
-  display:flex;align-items:center;gap:5px;
+.splash-tagline strong{
+  color:#fff;font-weight:600;
 }
-.splash-divider{
-  width:48px;height:1px;background:rgba(255,255,255,0.15);
-  margin:0 auto 28px;
+.splash-features{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;width:100%;margin-top:36px;
+  animation:fadeUpEl .8s .3s cubic-bezier(.22,1,.36,1) both;
+}
+.splash-feature{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  backdrop-filter:blur(20px);
+  border-radius:18px;padding:14px 12px;
+  display:flex;align-items:center;gap:10px;
+}
+.splash-feature-icon{font-size:22px;}
+.splash-feature-text{
+  display:flex;flex-direction:column;
+  font-size:11px;color:rgba(255,255,255,0.7);
+  font-weight:600;letter-spacing:.3px;
+}
+.splash-feature-text span{
+  font-size:10px;color:rgba(255,255,255,0.35);
+  font-weight:400;margin-top:1px;
+}
+.splash-bottom{
+  padding:24px 28px 40px;
+  position:relative;z-index:2;
+}
+.splash-stat{
+  text-align:center;margin-bottom:20px;
+  animation:fadeUpEl .8s .35s cubic-bezier(.22,1,.36,1) both;
+}
+.splash-stat-num{
+  font-size:28px;font-weight:700;color:#fff;
+  font-family:'Cormorant Garamond',serif;
+}
+.splash-stat-label{
+  font-size:11px;color:rgba(255,255,255,0.35);
+  letter-spacing:2px;text-transform:uppercase;margin-top:2px;
 }
 .btn-primary{
-  width:100%;padding:17px;border:none;border-radius:20px;
-  background:linear-gradient(135deg,#E8647A,#E8A050);
+  width:100%;padding:18px;border:none;border-radius:20px;
+  background:linear-gradient(135deg,#E8647A 0%,#d4547a 50%,#C084FC 100%);
   color:white;font-family:'Nunito',sans-serif;
-  font-size:16px;font-weight:700;cursor:pointer;
-  box-shadow:0 10px 36px rgba(232,100,122,.42);
-  transition:all .2s;margin-bottom:12px;letter-spacing:.3px;
-  animation:fadeUpEl .9s .24s cubic-bezier(.22,1,.36,1) both;
+  font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 12px 40px rgba(232,100,122,.5);
+  transition:all .2s;margin-bottom:12px;letter-spacing:.5px;
+  animation:fadeUpEl .8s .4s cubic-bezier(.22,1,.36,1) both;
+  position:relative;overflow:hidden;
 }
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 44px rgba(232,100,122,.55);}
+.btn-primary::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent);
+  pointer-events:none;
+}
 .btn-primary:active{transform:scale(.97);}
 .btn-ghost{
-  width:100%;padding:15px;border-radius:20px;
-  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);
-  backdrop-filter:blur(14px);
-  color:rgba(255,255,255,0.88);font-family:'Nunito',sans-serif;
+  width:100%;padding:16px;border-radius:20px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.75);font-family:'Nunito',sans-serif;
   font-size:15px;font-weight:600;cursor:pointer;
   transition:all .2s;
-  animation:fadeUpEl .9s .32s cubic-bezier(.22,1,.36,1) both;
+  animation:fadeUpEl .8s .48s cubic-bezier(.22,1,.36,1) both;
 }
-.btn-ghost:hover{background:rgba(255,255,255,.18);}
+.btn-ghost:active{background:rgba(255,255,255,0.08);}
 .splash-footnote{
-  margin-top:18px;font-size:11px;color:var(--dim);font-weight:500;
-  animation:fadeUpEl .9s .4s cubic-bezier(.22,1,.36,1) both;
+  margin-top:16px;font-size:11px;color:rgba(255,255,255,0.2);
+  font-weight:500;text-align:center;
+  animation:fadeUpEl .8s .52s cubic-bezier(.22,1,.36,1) both;
 }
+.splash-status{display:none;}
 
 /* ─────────────────────────────────────────
    DISCOVER
@@ -2404,10 +2463,10 @@ body{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
+        justifyContent: "flex-end",
+        padding: "0 24px 40px",
         zIndex: 50,
-        background: "rgba(8,12,28,0.88)"
+        background: "linear-gradient(to bottom, rgba(13,1,24,0.3) 0%, rgba(13,1,24,0.95) 40%, #0d0118 100%)"
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -2422,25 +2481,30 @@ body{
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontFamily: "Cormorant Garamond,serif",
-        fontSize: 52,
+        fontSize: 60,
         fontWeight: 700,
-        background: "linear-gradient(135deg,#E8647A,#E8A050)",
+        background: "linear-gradient(135deg,#ffd6e0 0%,#E8647A 40%,#C084FC 100%)",
         WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent"
+        WebkitTextFillColor: "transparent",
+        letterSpacing: -1,
+        lineHeight: 1
       }
-    }, "aura"), /*#__PURE__*/React.createElement("div", {
+    }, "Aura"), /*#__PURE__*/React.createElement("div", {
       style: {
-        color: "rgba(255,255,255,0.6)",
-        fontSize: 14,
-        marginTop: 4
+        color: "rgba(255,255,255,0.4)",
+        fontSize: 11,
+        marginTop: 6,
+        letterSpacing: 4,
+        textTransform: "uppercase"
       }
-    }, "Trouve ta personne \u2728")), /*#__PURE__*/React.createElement("div", {
+    }, authMode === "login" ? "Bon retour \u2728" : "Rejoins-nous \u2728")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
-        background: "rgba(255,255,255,0.08)",
-        borderRadius: 12,
+        background: "rgba(255,255,255,0.06)",
+        borderRadius: 16,
         padding: 4,
-        marginBottom: 24
+        marginBottom: 24,
+        border: "1px solid rgba(255,255,255,0.08)" 
       }
     }, ["login", "register"].map(m => /*#__PURE__*/React.createElement("button", {
       key: m,
@@ -2572,34 +2636,46 @@ body{
       className: "screen"
     }, /*#__PURE__*/React.createElement("div", {
       className: "splash"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "splash-logo"
-    }, "Aura"), /*#__PURE__*/React.createElement("div", {
-      className: "splash-tag"
-    }, "Find your spark"), /*#__PURE__*/React.createElement("div", {
-      className: "splash-pills"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "splash-pill"
-    }, "\u2728 Matching IA"), /*#__PURE__*/React.createElement("div", {
-      className: "splash-pill"
-    }, "\uD83C\uDFA4 Message vocal"), /*#__PURE__*/React.createElement("div", {
-      className: "splash-pill"
-    }, "\uD83C\uDFAC Vid\xE9o 10s"), /*#__PURE__*/React.createElement("div", {
-      className: "splash-pill"
-    }, "\uD83D\uDEE1\uFE0F Profils v\xE9rifi\xE9s")), /*#__PURE__*/React.createElement("div", {
-      className: "splash-divider"
-    }), /*#__PURE__*/React.createElement("button", {
-      className: "btn-primary",
-      onClick: () => setScreen("auth")
-    }, "Commencer gratuitement \u2726"), /*#__PURE__*/React.createElement("button", {
-      className: "btn-ghost",
-      onClick: () => {
-        setScreen("auth");
-        setAuthMode("login");
-      }
-    }, "J'ai d\xE9j\xE0 un compte"), /*#__PURE__*/React.createElement("div", {
-      className: "splash-footnote"
-    }, "2 millions de membres \xB7 150 000 couples form\xE9s"))), screen === "app" && /*#__PURE__*/React.createElement("div", {
+    },
+      /*#__PURE__*/React.createElement("div", { className: "splash-bg" }),
+      /*#__PURE__*/React.createElement("div", { className: "splash-top" },
+        /*#__PURE__*/React.createElement("div", { className: "splash-logo" }, "Aura"),
+        /*#__PURE__*/React.createElement("div", { className: "splash-tag" }, "Find your spark"),
+        /*#__PURE__*/React.createElement("div", { className: "splash-tagline" },
+          "Rencontres ", /*#__PURE__*/React.createElement("strong", null, "authentiques"), ".",
+          /*#__PURE__*/React.createElement("br", null),
+          "Connexions ", /*#__PURE__*/React.createElement("strong", null, "profondes"), "."
+        ),
+        /*#__PURE__*/React.createElement("div", { className: "splash-features" },
+          [
+            { icon: "\uD83C\uDFA4", title: "Vocal & Vidéo", sub: "Présente-toi en vrai" },
+            { icon: "\u2728", title: "Matching IA", sub: "Profils compatibles" },
+            { icon: "\uD83D\uDCCD", title: "Par distance", sub: "Près de chez toi" },
+            { icon: "\uD83D\uDEE1\uFE0F", title: "Sécurisé", sub: "Profils vérifiés" },
+          ].map((f,i) => /*#__PURE__*/React.createElement("div", { key: i, className: "splash-feature" },
+            /*#__PURE__*/React.createElement("div", { className: "splash-feature-icon" }, f.icon),
+            /*#__PURE__*/React.createElement("div", { className: "splash-feature-text" }, f.title,
+              /*#__PURE__*/React.createElement("span", null, f.sub)
+            )
+          ))
+        )
+      ),
+      /*#__PURE__*/React.createElement("div", { className: "splash-bottom" },
+        /*#__PURE__*/React.createElement("div", { className: "splash-stat" },
+          /*#__PURE__*/React.createElement("div", { className: "splash-stat-num" }, "2M+"),
+          /*#__PURE__*/React.createElement("div", { className: "splash-stat-label" }, "membres · 150 000 couples formés")
+        ),
+        /*#__PURE__*/React.createElement("button", {
+          className: "btn-primary",
+          onClick: () => setScreen("auth")
+        }, "Commencer gratuitement \u2726"),
+        /*#__PURE__*/React.createElement("button", {
+          className: "btn-ghost",
+          onClick: () => { setScreen("auth"); setAuthMode("login"); }
+        }, "J'ai déjà un compte"),
+        /*#__PURE__*/React.createElement("div", { className: "splash-footnote" }, "Gratuit · Sans engagement · Résiliable à tout moment")
+      )
+    )), screen === "app" && /*#__PURE__*/React.createElement("div", {
       className: "screen"
     }, tab === "discover" && /*#__PURE__*/React.createElement("div", {
       className: "discover"
