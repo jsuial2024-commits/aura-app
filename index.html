@@ -1331,6 +1331,15 @@ body{
     const [showViewsPanel, setShowViewsPanel] = useState(false);
     const [showLegal, setShowLegal] = useState(null);
     const [showAdmin, setShowAdmin] = useState(false);
+    const [showCrushTime, setShowCrushTime] = useState(false);
+    const [crushTimeProfiles, setCrushTimeProfiles] = useState([]);
+    const [crushTimeAnswer, setCrushTimeAnswer] = useState(null);
+    const [crushTimeResult, setCrushTimeResult] = useState(null);
+    const [invisibleMode, setInvisibleMode] = useState(false);
+    const [invisibleUntil, setInvisibleUntil] = useState(null);
+    const [readyToMeet, setReadyToMeet] = useState({});
+    const [showIcebreakers, setShowIcebreakers] = useState(false);
+    const [profileVerified, setProfileVerified] = useState(false);
     const [adminStats, setAdminStats] = useState(null);
     const ADMIN_EMAIL = "jsuial@hotmail.fr"; // change to your email // 'cgu' or 'privacy'
     const [chatInput, setChatInput] = useState("");
@@ -2319,6 +2328,66 @@ body{
       } catch(e) { console.error("adminStats:", e); }
     }
 
+    const ICEBREAKERS = [
+      "Tu es plutôt café ou thé le matin ? ☕🍵",
+      "Quel est le dernier endroit qui t'a fait dire 'wow' ?",
+      "Si tu pouvais dîner avec n'importe qui, qui ce serait ?",
+      "C'est quoi ton endroit préféré à " + "Paris" + " ?",
+      "Série Netflix en ce moment ou tu cherches des conseils ? 😄",
+      "Tu es plutôt montagne ou plage pour les vacances ?",
+      "Quel talent caché tu as que personne ne soupçonne ?",
+      "Le truc qui te fait sourire tous les matins ?",
+      "Si tu devais décrire ta semaine avec un emoji, ce serait lequel ?",
+      "Tu es plutôt lève-tôt ou noctambule ?",
+    ];
+
+    function startCrushTime() {
+      if (!likesReceived.length) { showToast("Pas encore de likes reçus !"); return; }
+      // Pick the real liker + 3 random from profiles
+      const realLiker = likesReceived[Math.floor(Math.random() * likesReceived.length)];
+      const others = profiles.filter(p => p.id !== realLiker.id).slice(0, 3);
+      const all = [...others, realLiker].sort(() => Math.random() - 0.5);
+      setCrushTimeProfiles(all);
+      setCrushTimeAnswer(realLiker.id);
+      setCrushTimeResult(null);
+      setShowCrushTime(true);
+    }
+
+    function guessCrushTime(profileId) {
+      if (crushTimeResult !== null) return;
+      const correct = profileId === crushTimeAnswer;
+      setCrushTimeResult(correct ? 'win' : 'lose');
+      showToast(correct ? "🎉 Bien joué ! Tu as deviné !" : "😅 Raté ! Essaie encore !");
+    }
+
+    function toggleInvisible(hours) {
+      if (invisibleMode) {
+        setInvisibleMode(false);
+        setInvisibleUntil(null);
+        showToast("👁️ Tu es à nouveau visible !");
+      } else {
+        const until = new Date(Date.now() + hours * 60 * 60 * 1000);
+        setInvisibleMode(true);
+        setInvisibleUntil(until);
+        showToast("🌙 Mode invisible activé pour " + hours + "h");
+      }
+    }
+
+    function toggleReadyToMeet(matchId) {
+      setReadyToMeet(prev => {
+        const newVal = !prev[matchId];
+        showToast(newVal ? "📅 Super ! On vous préviendra quand l'autre sera prêt aussi !" : "📅 Retiré");
+        return { ...prev, [matchId]: newVal };
+      });
+    }
+
+    function sendIcebreaker(text) {
+      setShowIcebreakers(false);
+      if (openChat?.matchId) {
+        sendRealMsg(openChat.matchId, text);
+      }
+    }
+
     async function recordProfileView(viewedId) {
       if (!currentUser || viewedId === currentUser.id) return;
       try {
@@ -2722,6 +2791,11 @@ body{
       style: { position: "relative" }
     }, "\uD83D\uDC40"),
     /*#__PURE__*/React.createElement("div", {
+      className: "icon-btn",
+      onClick: () => { loadLikesReceived(); setTimeout(startCrushTime, 500); },
+      style: { position: "relative" }
+    }, "\uD83C\uDFAE"),
+    /*#__PURE__*/React.createElement("div", {
       className: "card-stack",
       onMouseMove: onMM,
       onMouseUp: onMU,
@@ -3090,6 +3164,10 @@ body{
         style: { padding:"13px 16px",color:"#ff9f43",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10 }
       }, "\uD83D\uDEAB Bloquer"),
       /*#__PURE__*/React.createElement("div", {
+        onClick: e => { e.stopPropagation(); setShowChatMenu(false); toggleReadyToMeet(chatConv.matchId); },
+        style: { padding:"13px 16px",color: readyToMeet[chatConv?.matchId] ? "#4ECDC4" : "rgba(255,255,255,0.7)",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10 }
+      }, readyToMeet[chatConv?.matchId] ? "\uD83D\uDCC5 Annuler le rendez-vous" : "\uD83D\uDCC5 Prêt à se rencontrer"),
+      /*#__PURE__*/React.createElement("div", {
         onClick: e => { e.stopPropagation(); setShowChatMenu(false); },
         style: { padding:"13px 16px",color:"rgba(255,255,255,0.4)",fontSize:15,cursor:"pointer",borderRadius:10,display:"flex",alignItems:"center",gap:10 }
       }, "\u2715 Annuler")
@@ -3119,7 +3197,20 @@ body{
       }, /*#__PURE__*/React.createElement("div", {
         className: "btime"
       }, t)));
-    })), /*#__PURE__*/React.createElement("div", {
+    })), readyToMeet[openChat?.matchId] && /*#__PURE__*/React.createElement("div", {
+      style: { margin:"0 16px 8px",padding:"10px 14px",background:"rgba(100,200,100,0.1)",border:"1px solid rgba(100,200,100,0.3)",borderRadius:14,display:"flex",alignItems:"center",gap:8,fontSize:13,color:"rgba(100,255,100,0.8)" }
+    }, "\uD83D\uDCC5 Tu es prêt à rencontrer ", chatConv?.name, " en vrai !"),
+    showIcebreakers && /*#__PURE__*/React.createElement("div", {
+      style: { margin:"0 12px 8px",background:"#1a1f35",borderRadius:16,padding:10,border:"1px solid rgba(255,255,255,0.1)",maxHeight:160,overflowY:"auto" }
+    },
+      /*#__PURE__*/React.createElement("div", { style:{fontSize:11,color:"rgba(255,255,255,0.4)",padding:"4px 6px 8px",letterSpacing:1,textTransform:"uppercase"} }, "💡 Brise-glace"),
+      ICEBREAKERS.map((q,i) => /*#__PURE__*/React.createElement("div", {
+        key:i,
+        onClick: () => sendIcebreaker(q),
+        style: { padding:"8px 10px",borderRadius:10,color:"rgba(255,255,255,0.8)",fontSize:13,cursor:"pointer",marginBottom:2,background:"rgba(255,255,255,0.04)" }
+      }, q))
+    ),
+    /*#__PURE__*/React.createElement("div", {
       className: "chat-bar"
     }, /*#__PURE__*/React.createElement("textarea", {
       className: "chat-input",
@@ -3134,6 +3225,10 @@ body{
         }
       }
     }), /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowIcebreakers(i => !i),
+      style: { width:40,height:40,borderRadius:"50%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,cursor:"pointer",flexShrink:0 }
+    }, "\uD83D\uDCA1"),
+    /*#__PURE__*/React.createElement("div", {
       className: "send-btn",
       onClick: sendMsg
     }, "\u27A4"))), tab === "premium" && /*#__PURE__*/React.createElement("div", {
@@ -3789,7 +3884,11 @@ body{
         cursor: "pointer",
         letterSpacing: "0.5px"
       }
-    }, "\uD83D\uDEAA Se d\xE9connecter"), /*#__PURE__*/React.createElement("div", {
+    }, "\uD83D\uDEAA Se d\xE9connecter"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => toggleInvisible(2),
+      style: { width:"100%",padding:"14px",borderRadius:16,background: invisibleMode ? "rgba(100,100,255,0.2)" : "rgba(255,255,255,0.06)",border: invisibleMode ? "1px solid rgba(100,100,255,0.4)" : "1px solid rgba(255,255,255,0.1)",color: invisibleMode ? "#aaf" : "rgba(255,255,255,0.6)",fontSize:14,cursor:"pointer",marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }
+    }, invisibleMode ? "\uD83D\uDC41\uFE0F Mode invisible actif - Appuie pour désactiver" : "\uD83C\uDF19 Mode invisible (2h)"),
+    /*#__PURE__*/React.createElement("div", {
       style: { display:"flex", gap:8, marginTop:8 }
     },
       /*#__PURE__*/React.createElement("button", {
@@ -3975,6 +4074,38 @@ body{
         /*#__PURE__*/React.createElement("button", { onClick: () => { confirmAction.onConfirm(); setConfirmAction(null); }, style: { flex:1,padding:14,borderRadius:14,background:"linear-gradient(135deg,#ff6b6b,#ff4444)",border:"none",color:"#fff",fontSize:15,cursor:"pointer",fontWeight:700 } }, "Confirmer")
       )
     )),
+    showCrushTime && /*#__PURE__*/React.createElement("div", {
+      style: { position:"absolute",inset:0,zIndex:70,background:"rgba(10,5,20,0.97)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24 }
+    },
+      /*#__PURE__*/React.createElement("div", { onClick: () => setShowCrushTime(false), style:{position:"absolute",top:20,left:20,fontSize:22,color:"#E8647A",cursor:"pointer"} }, "\u2190"),
+      /*#__PURE__*/React.createElement("div", { style:{fontSize:42,marginBottom:8} }, "\uD83C\uDFAE"),
+      /*#__PURE__*/React.createElement("div", { style:{fontSize:22,fontWeight:700,color:"#fff",fontFamily:"'Cormorant Garamond',serif",marginBottom:4} }, "CrushTime !"),
+      /*#__PURE__*/React.createElement("div", { style:{fontSize:13,color:"rgba(255,255,255,0.4)",textAlign:"center",marginBottom:28} }, "Devine qui t'a secrètement liké parmi ces profils"),
+      crushTimeResult && /*#__PURE__*/React.createElement("div", {
+        style: { marginBottom:16,padding:"10px 20px",borderRadius:14,background: crushTimeResult==='win' ? "rgba(100,220,100,0.2)" : "rgba(220,100,100,0.2)",color: crushTimeResult==='win' ? "#4EDD4E" : "#ff6b6b",fontWeight:700,fontSize:14,textAlign:"center" }
+      }, crushTimeResult==='win' ? "🎉 Bravo ! Tu as deviné !" : "😅 Raté ! C'était " + (crushTimeProfiles.find(p=>p.id===crushTimeAnswer)?.name||"?")),
+      /*#__PURE__*/React.createElement("div", { style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,width:"100%",maxWidth:320} },
+        crushTimeProfiles.map(p => /*#__PURE__*/React.createElement("div", {
+          key: p.id,
+          onClick: () => guessCrushTime(p.id),
+          style: { borderRadius:20,overflow:"hidden",position:"relative",aspectRatio:"3/4",cursor:"pointer",
+            border: crushTimeResult ? (p.id===crushTimeAnswer ? "3px solid #4EDD4E" : "3px solid transparent") : "3px solid rgba(255,255,255,0.1)",
+            transform: crushTimeResult && p.id===crushTimeAnswer ? "scale(1.03)" : "scale(1)",
+            transition:"all .2s" }
+        },
+          p.photo ? /*#__PURE__*/React.createElement("div", { style:{width:"100%",height:"100%",backgroundImage:`url(${p.photo})`,backgroundSize:"cover",backgroundPosition:"center"} }) :
+          /*#__PURE__*/React.createElement("div", { style:{width:"100%",height:"100%",background:"linear-gradient(135deg,#E8647A,#E8A050)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,color:"#fff"} }, (p.name||"?")[0]),
+          /*#__PURE__*/React.createElement("div", { style:{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.8) 0%,transparent 60%)"} }),
+          /*#__PURE__*/React.createElement("div", { style:{position:"absolute",bottom:8,left:8,right:8,color:"#fff",fontWeight:700,fontSize:14} }, p.name||"?",
+            p.age && /*#__PURE__*/React.createElement("span", { style:{fontWeight:400,fontSize:12,opacity:0.7} }, ", "+p.age)
+          )
+        ))
+      ),
+      crushTimeResult && /*#__PURE__*/React.createElement("button", {
+        onClick: () => { setCrushTimeResult(null); startCrushTime(); },
+        style: { marginTop:20,padding:"12px 32px",borderRadius:16,background:"linear-gradient(135deg,#E8647A,#E8A050)",border:"none",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer" }
+      }, "\uD83D\uDD04 Rejouer")
+    ),
     showAdmin && /*#__PURE__*/React.createElement("div", {
       style: { position:"absolute",inset:0,zIndex:60,background:"#080c1a",display:"flex",flexDirection:"column",overflow:"hidden" }
     },
